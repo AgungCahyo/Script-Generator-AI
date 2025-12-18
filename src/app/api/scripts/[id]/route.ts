@@ -51,3 +51,39 @@ export async function DELETE(
         )
     }
 }
+
+// PATCH: Update script content
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const { id } = await params
+        const body = await request.json()
+        const { script } = body
+
+        if (script === undefined) {
+            return NextResponse.json(
+                { error: 'Script content is required' },
+                { status: 400 }
+            )
+        }
+
+        const updatedScript = await prisma.script.update({
+            where: { id },
+            data: {
+                script,
+                // Clear audio when script is edited
+                audioUrl: null
+            },
+        })
+
+        return NextResponse.json({ success: true, script: updatedScript })
+    } catch (error) {
+        console.error('Error updating script:', error)
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
+    }
+}

@@ -134,6 +134,14 @@ export default function Home() {
     setModalScript(null)
   }
 
+  const handleScriptUpdated = (updatedScript: Script) => {
+    setModalScript(updatedScript)
+    if (currentScript?.id === updatedScript.id) {
+      setCurrentScript(updatedScript)
+    }
+    fetchScripts()
+  }
+
   const handleGenerateAudio = async () => {
     if (!modalScript) return
     setGeneratingAudio(true)
@@ -209,6 +217,7 @@ export default function Home() {
         onClose={closeModal}
         onGenerateAudio={handleGenerateAudio}
         generatingAudio={generatingAudio}
+        onScriptUpdated={handleScriptUpdated}
       />
     </main>
   )
