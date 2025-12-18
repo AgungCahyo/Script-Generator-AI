@@ -6,8 +6,8 @@ import ScriptForm from '@/components/ScriptForm'
 import ScriptResult from '@/components/ScriptResult'
 import HistoryList from '@/components/HistoryList'
 import ScriptModal from '@/components/ScriptModal'
-import LoginForm from '@/components/LoginForm'
-import { LogOutOutline, PersonCircleOutline } from 'react-ionicons'
+import LoginModal from '@/components/LoginModal'
+import { LogOutOutline, PersonCircleOutline, LogInOutline } from 'react-ionicons'
 
 interface Script {
   id: string
@@ -29,6 +29,7 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalScript, setModalScript] = useState<Script | null>(null)
   const [generatingAudio, setGeneratingAudio] = useState(false)
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
 
   const fetchScripts = useCallback(async () => {
     if (!user) return
@@ -211,38 +212,49 @@ export default function Home() {
     )
   }
 
-  // Show login form if not authenticated
-  if (!user) {
-    return <LoginForm />
-  }
-
   return (
     <main className="min-h-screen bg-white">
       <header className="border-b border-neutral-200">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-sm font-medium text-neutral-900">Script Generator</h1>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 text-sm text-neutral-500">
-              <PersonCircleOutline color="#a3a3a3" width="20px" height="20px" />
-              <span className="hidden sm:inline">{user.email}</span>
-            </div>
-            <button
-              onClick={signOut}
-              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-              title="Sign Out"
-            >
-              <LogOutOutline color="currentColor" width="18px" height="18px" />
-            </button>
+            {user ? (
+              <>
+                <div className="flex items-center gap-2 text-sm text-neutral-500">
+                  <PersonCircleOutline color="#a3a3a3" width="20px" height="20px" />
+                  <span className="hidden sm:inline">{user.email}</span>
+                </div>
+                <button
+                  onClick={signOut}
+                  className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOutOutline color="currentColor" width="18px" height="18px" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setLoginModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors"
+              >
+                <LogInOutline color="currentColor" width="16px" height="16px" />
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <div className="max-w-3xl mx-auto px-6 py-8 space-y-12">
         <section>
-          <ScriptForm onSubmit={handleSubmit} loading={loading} />
+          <ScriptForm
+            onSubmit={handleSubmit}
+            loading={loading}
+            disabled={!user}
+          />
         </section>
 
-        {currentScript && (
+        {user && currentScript && (
           <section>
             <h2 className="text-sm text-neutral-600 mb-3">Result</h2>
             <ScriptResult
@@ -255,11 +267,17 @@ export default function Home() {
 
         <section>
           <h2 className="text-sm text-neutral-600 mb-3">History</h2>
-          <HistoryList
-            scripts={scripts}
-            onSelect={openModal}
-            onDelete={handleDelete}
-          />
+          {user ? (
+            <HistoryList
+              scripts={scripts}
+              onSelect={openModal}
+              onDelete={handleDelete}
+            />
+          ) : (
+            <div className="text-center py-8 text-neutral-400 text-sm">
+              Sign in to view your script history
+            </div>
+          )}
         </section>
       </div>
 
@@ -270,6 +288,11 @@ export default function Home() {
         onGenerateAudio={handleGenerateAudio}
         generatingAudio={generatingAudio}
         onScriptUpdated={handleScriptUpdated}
+      />
+
+      <LoginModal
+        isOpen={loginModalOpen}
+        onClose={() => setLoginModalOpen(false)}
       />
     </main>
   )

@@ -6,17 +6,20 @@ import { Reload } from 'react-ionicons'
 interface ScriptFormProps {
     onSubmit: (topic: string) => Promise<void>
     loading: boolean
+    disabled?: boolean
 }
 
-export default function ScriptForm({ onSubmit, loading }: ScriptFormProps) {
+export default function ScriptForm({ onSubmit, loading, disabled = false }: ScriptFormProps) {
     const [topic, setTopic] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!topic.trim() || loading) return
+        if (!topic.trim() || loading || disabled) return
         await onSubmit(topic.trim())
         setTopic('')
     }
+
+    const isDisabled = loading || disabled
 
     return (
         <form onSubmit={handleSubmit}>
@@ -26,13 +29,13 @@ export default function ScriptForm({ onSubmit, loading }: ScriptFormProps) {
                     type="text"
                     value={topic}
                     onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Enter your video topic..."
-                    className="flex-1 h-10 px-3 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-shadow"
-                    disabled={loading}
+                    placeholder={disabled ? "Sign in to generate scripts..." : "Enter your video topic..."}
+                    className={`flex-1 h-10 px-3 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-shadow ${disabled ? 'bg-neutral-50 cursor-not-allowed' : ''}`}
+                    disabled={isDisabled}
                 />
                 <button
                     type="submit"
-                    disabled={loading || !topic.trim()}
+                    disabled={isDisabled || !topic.trim()}
                     className="h-10 px-4 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
                 >
                     {loading ? (

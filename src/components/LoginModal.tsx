@@ -1,14 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { LogoGoogle, MailOutline, LockClosedOutline, PersonOutline, Reload } from 'react-ionicons'
+import { LogoGoogle, MailOutline, LockClosedOutline, PersonOutline, Reload, CloseOutline } from 'react-ionicons'
 
-// Sanitize Firebase errors to user-friendly messages (no technical details exposed)
+// Sanitize Firebase errors to user-friendly messages
 function getAuthErrorMessage(error: unknown): string {
     const firebaseError = error as { code?: string; message?: string }
 
-    // Map Firebase error codes to user-friendly messages
     const errorMessages: Record<string, string> = {
         'auth/invalid-email': 'Email tidak valid.',
         'auth/user-disabled': 'Akun ini telah dinonaktifkan.',
@@ -30,18 +29,39 @@ function getAuthErrorMessage(error: unknown): string {
         return errorMessages[firebaseError.code]
     }
 
-    // Generic fallback - never expose raw error message
-    console.error('Auth error:', error) // Log for debugging (server-side only in production)
+    console.error('Auth error:', error)
     return 'Terjadi kesalahan. Silakan coba lagi.'
 }
 
-export default function LoginForm() {
-    const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
+interface LoginModalProps {
+    isOpen: boolean
+    onClose: () => void
+}
+
+export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+    const { signInWithGoogle, signInWithEmail, signUpWithEmail, user } = useAuth()
     const [isSignUp, setIsSignUp] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+
+    // Close modal when user logs in successfully
+    useEffect(() => {
+        if (user && isOpen) {
+            onClose()
+        }
+    }, [user, isOpen, onClose])
+
+    // Reset form when modal opens/closes
+    useEffect(() => {
+        if (!isOpen) {
+            setEmail('')
+            setPassword('')
+            setError('')
+            setIsSignUp(false)
+        }
+    }, [isOpen])
 
     const handleEmailAuth = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -74,14 +94,33 @@ export default function LoginForm() {
         }
     }
 
+    if (!isOpen) return null
+
     return (
-        <div className="min-h-screen bg-white flex items-center justify-center px-4">
-            <div className="w-full max-w-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={onClose}
+            />
+
+            {/* Modal */}
+            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 animate-in fade-in zoom-in-95 duration-200">
+                {/* Close button */}
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+                >
+                    <CloseOutline color="currentColor" width="20px" height="20px" />
+                </button>
+
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-2xl font-semibold text-neutral-900 mb-2">Script Generator</h1>
+                <div className="text-center mb-6">
+                    <h2 className="text-xl font-semibold text-neutral-900 mb-1">
+                        {isSignUp ? 'Create Account' : 'Sign In'}
+                    </h2>
                     <p className="text-sm text-neutral-500">
-                        {isSignUp ? 'Create an account' : 'Sign in to continue'}
+                        {isSignUp ? 'Create an account to get started' : 'Sign in to generate scripts'}
                     </p>
                 </div>
 
@@ -96,21 +135,21 @@ export default function LoginForm() {
                 <button
                     onClick={handleGoogleAuth}
                     disabled={loading}
-                    className="w-full h-11 flex items-center justify-center gap-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors mb-4"
+                    className="w-full h-11 flex items-center justify-center gap-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors mb-4 disabled:opacity-50"
                 >
                     <LogoGoogle color="#4285F4" width="20px" height="20px" />
                     <span className="text-sm font-medium text-neutral-700">Continue with Google</span>
                 </button>
 
                 {/* Divider */}
-                <div className="flex items-center gap-4 my-6">
+                <div className="flex items-center gap-4 my-5">
                     <div className="flex-1 h-px bg-neutral-200" />
                     <span className="text-xs text-neutral-400">or</span>
                     <div className="flex-1 h-px bg-neutral-200" />
                 </div>
 
                 {/* Email Form */}
-                <form onSubmit={handleEmailAuth} className="space-y-4">
+                <form onSubmit={handleEmailAuth} className="space-y-3">
                     <div className="relative">
                         <div className="absolute left-3 top-1/2 -translate-y-1/2">
                             <MailOutline color="#a3a3a3" width="18px" height="18px" />
@@ -157,7 +196,7 @@ export default function LoginForm() {
                 </form>
 
                 {/* Toggle */}
-                <p className="text-center text-sm text-neutral-500 mt-6">
+                <p className="text-center text-sm text-neutral-500 mt-5">
                     {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
                     <button
                         onClick={() => setIsSignUp(!isSignUp)}
