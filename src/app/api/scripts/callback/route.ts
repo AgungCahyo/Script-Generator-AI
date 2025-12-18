@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { scriptId, script, audioUrl, status, error } = body
+        const { scriptId, script, audioBase64, status, error } = body
 
         if (!scriptId) {
             return NextResponse.json(
@@ -26,12 +26,18 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Convert base64 audio to data URL if present
+        let audioUrl = null
+        if (audioBase64) {
+            audioUrl = `data:audio/mpeg;base64,${audioBase64}`
+        }
+
         // Update the script with results
         const updatedScript = await prisma.script.update({
             where: { id: scriptId },
             data: {
                 script: script || null,
-                audioUrl: audioUrl || null,
+                audioUrl: audioUrl,
                 status: status || 'completed',
                 error: error || null,
             },

@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { topic } = body
+        const { topic, generateTts = true } = body
 
         if (!topic || typeof topic !== 'string') {
             return NextResponse.json(
@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
         // Trigger n8n webhook
         const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL
         if (!n8nWebhookUrl) {
-            // Update status to failed if no webhook URL
             await prisma.script.update({
                 where: { id: script.id },
                 data: { status: 'failed', error: 'N8N_WEBHOOK_URL not configured' },
@@ -50,10 +49,10 @@ export async function POST(request: NextRequest) {
                 scriptId: script.id,
                 topic: topic.trim(),
                 callbackUrl: callbackUrl,
+                generateTts: generateTts,
             }),
         }).catch((error) => {
             console.error('Failed to trigger n8n webhook:', error)
-            // Update script status to failed
             prisma.script.update({
                 where: { id: script.id },
                 data: { status: 'failed', error: 'Failed to trigger n8n webhook' },

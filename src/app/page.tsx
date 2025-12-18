@@ -19,6 +19,7 @@ export default function Home() {
   const [currentScript, setCurrentScript] = useState<Script | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
   const [polling, setPolling] = useState(false)
+  const [generateTts, setGenerateTts] = useState(true)
 
   const fetchScripts = useCallback(async () => {
     try {
@@ -76,7 +77,10 @@ export default function Home() {
       const res = await fetch('/api/scripts/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: topic.trim() }),
+        body: JSON.stringify({
+          topic: topic.trim(),
+          generateTts: generateTts
+        }),
       })
       const data = await res.json()
 
@@ -148,7 +152,7 @@ export default function Home() {
             <label className="block text-sm text-neutral-600 mb-2">
               Topic
             </label>
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-3">
               <input
                 type="text"
                 value={topic}
@@ -175,6 +179,18 @@ export default function Home() {
                 )}
               </button>
             </div>
+
+            {/* TTS Toggle */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={generateTts}
+                onChange={(e) => setGenerateTts(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                disabled={loading}
+              />
+              <span className="text-sm text-neutral-600">Generate audio (TTS)</span>
+            </label>
           </form>
         </section>
 
@@ -213,8 +229,8 @@ export default function Home() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    <p className="text-sm text-neutral-500">Generating script...</p>
-                    <p className="text-xs text-neutral-400 mt-1">This may take 30-60 seconds</p>
+                    <p className="text-sm text-neutral-500">Generating script{generateTts ? ' and audio' : ''}...</p>
+                    <p className="text-xs text-neutral-400 mt-1">This may take {generateTts ? '60-90' : '30-60'} seconds</p>
                   </div>
                 )}
 
@@ -222,10 +238,32 @@ export default function Home() {
                   <p className="text-sm text-red-600">{currentScript.error || 'An error occurred'}</p>
                 )}
 
-                {currentScript.status === 'completed' && currentScript.script && (
-                  <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">
-                    {currentScript.script}
-                  </pre>
+                {currentScript.status === 'completed' && (
+                  <div className="space-y-4">
+                    {/* Audio Player */}
+                    {currentScript.audioUrl && (
+                      <div className="bg-neutral-50 rounded-lg p-4">
+                        <p className="text-xs text-neutral-500 mb-2">Audio</p>
+                        <audio
+                          controls
+                          className="w-full h-10"
+                          src={currentScript.audioUrl}
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                      </div>
+                    )}
+
+                    {/* Script Text */}
+                    {currentScript.script && (
+                      <div>
+                        <p className="text-xs text-neutral-500 mb-2">Script</p>
+                        <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-mono leading-relaxed max-h-80 overflow-y-auto bg-neutral-50 rounded-lg p-4">
+                          {currentScript.script}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -249,7 +287,14 @@ export default function Home() {
                   onClick={() => setCurrentScript(script)}
                 >
                   <div className="flex-1 min-w-0 mr-4">
-                    <p className="text-sm text-neutral-900 truncate">{script.topic}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-neutral-900 truncate">{script.topic}</p>
+                      {script.audioUrl && (
+                        <svg className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                        </svg>
+                      )}
+                    </div>
                     <p className="text-xs text-neutral-400 mt-0.5">{formatDate(script.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-3">
