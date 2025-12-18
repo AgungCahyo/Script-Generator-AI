@@ -89,7 +89,7 @@ export default function ScriptModal({
                     {/* Title bar */}
                     <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100">
                         <div className="flex items-center gap-2">
-                            <DocumentTextOutline color="#2563eb" width="20px" height="20px" />
+                            <DocumentTextOutline color="#000000" width="20px" height="20px" />
                             <span className="text-sm font-medium text-neutral-700 truncate max-w-md">
                                 {script.topic}
                             </span>
