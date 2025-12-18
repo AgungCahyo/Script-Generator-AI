@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { verifyToken } from '@/lib/firebase-admin'
+
+// Helper to get user from token
+async function getUserFromRequest(request: NextRequest) {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+        return null
+    }
+    const token = authHeader.split('Bearer ')[1]
+    return await verifyToken(token)
+}
 
 // GET: Fetch single script by ID
 export async function GET(
@@ -7,17 +18,19 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getUserFromRequest(request)
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { id } = await params
 
-        const script = await prisma.script.findUnique({
-            where: { id },
+        const script = await prisma.script.findFirst({
+            where: { id, userId: user.uid },
         })
 
         if (!script) {
-            return NextResponse.json(
-                { error: 'Script not found' },
-                { status: 404 }
-            )
+            return NextResponse.json({ error: 'Script not found' }, { status: 404 })
         }
 
         return NextResponse.json({ script })
@@ -36,11 +49,23 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getUserFromRequest(request)
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { id } = await params
 
-        await prisma.script.delete({
-            where: { id },
+        // Verify ownership
+        const script = await prisma.script.findFirst({
+            where: { id, userId: user.uid },
         })
+
+        if (!script) {
+            return NextResponse.json({ error: 'Script not found' }, { status: 404 })
+        }
+
+        await prisma.script.delete({ where: { id } })
 
         return NextResponse.json({ success: true })
     } catch (error) {
@@ -58,6 +83,11 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getUserFromRequest(request)
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { id } = await params
         const body = await request.json()
         const { script } = body
@@ -69,11 +99,19 @@ export async function PATCH(
             )
         }
 
+        // Verify ownership
+        const existingScript = await prisma.script.findFirst({
+            where: { id, userId: user.uid },
+        })
+
+        if (!existingScript) {
+            return NextResponse.json({ error: 'Script not found' }, { status: 404 })
+        }
+
         const updatedScript = await prisma.script.update({
             where: { id },
             data: {
                 script,
-                // Clear audio when script is edited
                 audioUrl: null
             },
         })

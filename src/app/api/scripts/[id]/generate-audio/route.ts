@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { verifyToken } from '@/lib/firebase-admin'
+
+// Helper to get user from token
+async function getUserFromRequest(request: NextRequest) {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+        return null
+    }
+    const token = authHeader.split('Bearer ')[1]
+    return await verifyToken(token)
+}
 
 // POST: Trigger TTS generation for a script
 export async function POST(
@@ -7,11 +18,16 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const user = await getUserFromRequest(request)
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
         const { id } = await params
 
-        // Find the script
-        const script = await prisma.script.findUnique({
-            where: { id },
+        // Find script and verify ownership
+        const script = await prisma.script.findFirst({
+            where: { id, userId: user.uid },
         })
 
         if (!script) {
@@ -19,41 +35,33 @@ export async function POST(
         }
 
         if (!script.script) {
-            return NextResponse.json({ error: 'No script text to convert' }, { status: 400 })
+            return NextResponse.json({ error: 'Script has no content' }, { status: 400 })
         }
 
-        // Get callback URL
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-        const callbackUrl = `${appUrl}/api/scripts/callback`
-
-        // Get TTS webhook URL
+        // Trigger TTS webhook
         const ttsWebhookUrl = process.env.N8N_TTS_WEBHOOK_URL
         if (!ttsWebhookUrl) {
-            return NextResponse.json(
-                { error: 'N8N_TTS_WEBHOOK_URL not configured' },
-                { status: 500 }
-            )
+            return NextResponse.json({ error: 'TTS webhook not configured' }, { status: 500 })
         }
 
-        // Trigger TTS webhook (non-blocking)
+        const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://web-trigger.vercel.app'}/api/scripts/callback`
+
         fetch(ttsWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                scriptId: id,
+                scriptId: script.id,
                 script: script.script,
-                callbackUrl: callbackUrl,
+                callbackUrl,
             }),
-        }).catch((error) => {
-            console.error('Failed to trigger TTS webhook:', error)
-        })
+        }).catch(err => console.error('TTS webhook error:', err))
 
-        return NextResponse.json({
-            success: true,
-            message: 'TTS generation started',
-        })
+        return NextResponse.json({ success: true, message: 'Audio generation started' })
     } catch (error) {
         console.error('Error triggering TTS:', error)
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        )
     }
 }

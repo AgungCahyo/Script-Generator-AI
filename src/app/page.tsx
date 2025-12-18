@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 import ScriptForm from '@/components/ScriptForm'
 import ScriptResult from '@/components/ScriptResult'
 import HistoryList from '@/components/HistoryList'
 import ScriptModal from '@/components/ScriptModal'
+import LoginForm from '@/components/LoginForm'
+import { LogOutOutline, PersonCircleOutline } from 'react-ionicons'
 
 interface Script {
   id: string
@@ -18,6 +21,7 @@ interface Script {
 }
 
 export default function Home() {
+  const { user, loading: authLoading, signOut, getIdToken } = useAuth()
   const [loading, setLoading] = useState(false)
   const [currentScript, setCurrentScript] = useState<Script | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
@@ -27,18 +31,25 @@ export default function Home() {
   const [generatingAudio, setGeneratingAudio] = useState(false)
 
   const fetchScripts = useCallback(async () => {
+    if (!user) return
     try {
-      const res = await fetch('/api/scripts')
+      const token = await getIdToken()
+      const res = await fetch('/api/scripts', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       const data = await res.json()
       if (data.scripts) setScripts(data.scripts)
     } catch (error) {
       console.error('Error fetching scripts:', error)
     }
-  }, [])
+  }, [user, getIdToken])
 
   const pollScriptStatus = useCallback(async (scriptId: string) => {
     try {
-      const res = await fetch(`/api/scripts/${scriptId}`)
+      const token = await getIdToken()
+      const res = await fetch(`/api/scripts/${scriptId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       const data = await res.json()
       if (data.script) {
         setCurrentScript(data.script)
@@ -54,11 +65,11 @@ export default function Home() {
     } catch (error) {
       console.error('Error polling script:', error)
     }
-  }, [fetchScripts, modalScript?.id])
+  }, [fetchScripts, modalScript?.id, getIdToken])
 
   useEffect(() => {
-    fetchScripts()
-  }, [fetchScripts])
+    if (user) fetchScripts()
+  }, [user, fetchScripts])
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -73,9 +84,13 @@ export default function Home() {
     setCurrentScript(null)
 
     try {
+      const token = await getIdToken()
       const res = await fetch('/api/scripts/trigger', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
         body: JSON.stringify({ topic }),
       })
       const data = await res.json()
@@ -107,7 +122,11 @@ export default function Home() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this script?')) return
     try {
-      await fetch(`/api/scripts/${id}`, { method: 'DELETE' })
+      const token = await getIdToken()
+      await fetch(`/api/scripts/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
       fetchScripts()
       if (currentScript?.id === id) setCurrentScript(null)
       if (modalScript?.id === id) {
@@ -147,7 +166,11 @@ export default function Home() {
     setGeneratingAudio(true)
 
     try {
-      const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, { method: 'POST' })
+      const token = await getIdToken()
+      const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
       const data = await res.json()
 
       if (!data.success) {
@@ -157,7 +180,9 @@ export default function Home() {
       }
 
       const pollAudio = setInterval(async () => {
-        const scriptRes = await fetch(`/api/scripts/${modalScript.id}`)
+        const scriptRes = await fetch(`/api/scripts/${modalScript.id}`, {
+          headers: { Authorization: `Bearer ${await getIdToken()}` }
+        })
         const scriptData = await scriptRes.json()
         if (scriptData.script?.audioUrl) {
           clearInterval(pollAudio)
@@ -177,11 +202,38 @@ export default function Home() {
     }
   }
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-neutral-400">Loading...</div>
+      </div>
+    )
+  }
+
+  // Show login form if not authenticated
+  if (!user) {
+    return <LoginForm />
+  }
+
   return (
     <main className="min-h-screen bg-white">
       <header className="border-b border-neutral-200">
-        <div className="max-w-3xl mx-auto px-6 py-4">
+        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <h1 className="text-sm font-medium text-neutral-900">Script Generator</h1>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-neutral-500">
+              <PersonCircleOutline color="#a3a3a3" width="20px" height="20px" />
+              <span className="hidden sm:inline">{user.email}</span>
+            </div>
+            <button
+              onClick={signOut}
+              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+              title="Sign Out"
+            >
+              <LogOutOutline color="currentColor" width="18px" height="18px" />
+            </button>
+          </div>
         </div>
       </header>
 
