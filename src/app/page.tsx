@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import ScriptForm from '@/components/ScriptForm'
 import ScriptResult from '@/components/ScriptResult'
 import HistoryList from '@/components/HistoryList'
+import ScriptModal from '@/components/ScriptModal'
 
 interface Script {
   id: string
@@ -21,6 +22,9 @@ export default function Home() {
   const [currentScript, setCurrentScript] = useState<Script | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
   const [polling, setPolling] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalScript, setModalScript] = useState<Script | null>(null)
+  const [generatingAudio, setGeneratingAudio] = useState(false)
 
   const fetchScripts = useCallback(async () => {
     try {
@@ -38,6 +42,10 @@ export default function Home() {
       const data = await res.json()
       if (data.script) {
         setCurrentScript(data.script)
+        // Also update modal script if open
+        if (modalScript?.id === scriptId) {
+          setModalScript(data.script)
+        }
         if (data.script.status === 'completed' || data.script.status === 'failed') {
           setPolling(false)
           setLoading(false)
@@ -47,7 +55,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error polling script:', error)
     }
-  }, [fetchScripts])
+  }, [fetchScripts, modalScript?.id])
 
   useEffect(() => {
     fetchScripts()
@@ -74,7 +82,7 @@ export default function Home() {
       const data = await res.json()
 
       if (data.success && data.scriptId) {
-        setCurrentScript({
+        const newScript = {
           id: data.scriptId,
           topic,
           script: null,
@@ -83,7 +91,8 @@ export default function Home() {
           error: null,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        })
+        }
+        setCurrentScript(newScript)
         setPolling(true)
       } else {
         alert(data.error || 'Failed to trigger script generation')
@@ -102,6 +111,10 @@ export default function Home() {
       await fetch(`/api/scripts/${id}`, { method: 'DELETE' })
       fetchScripts()
       if (currentScript?.id === id) setCurrentScript(null)
+      if (modalScript?.id === id) {
+        setModalOpen(false)
+        setModalScript(null)
+      }
     } catch (error) {
       console.error('Error deleting:', error)
     }
@@ -112,6 +125,55 @@ export default function Home() {
       pollScriptStatus(currentScript.id)
     }
     fetchScripts()
+  }
+
+  const openModal = (script: Script) => {
+    setModalScript(script)
+    setModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setModalOpen(false)
+    setModalScript(null)
+  }
+
+  const handleGenerateAudio = async () => {
+    if (!modalScript) return
+    setGeneratingAudio(true)
+
+    try {
+      const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+
+      if (!data.success) {
+        alert(data.error || 'Failed to start audio generation')
+        setGeneratingAudio(false)
+        return
+      }
+
+      // Poll for audio
+      const pollAudio = setInterval(async () => {
+        const scriptRes = await fetch(`/api/scripts/${modalScript.id}`)
+        const scriptData = await scriptRes.json()
+        if (scriptData.script?.audioUrl) {
+          clearInterval(pollAudio)
+          setGeneratingAudio(false)
+          setModalScript(scriptData.script)
+          fetchScripts()
+        }
+      }, 3000)
+
+      // Timeout after 2 minutes
+      setTimeout(() => {
+        clearInterval(pollAudio)
+        setGeneratingAudio(false)
+      }, 120000)
+    } catch (error) {
+      console.error('Error generating audio:', error)
+      setGeneratingAudio(false)
+    }
   }
 
   return (
@@ -138,11 +200,20 @@ export default function Home() {
           <h2 className="text-sm text-neutral-600 mb-3">History</h2>
           <HistoryList
             scripts={scripts}
-            onSelect={setCurrentScript}
+            onSelect={openModal}
             onDelete={handleDelete}
           />
         </section>
       </div>
+
+      {/* Script Detail Modal */}
+      <ScriptModal
+        script={modalScript}
+        isOpen={modalOpen}
+        onClose={closeModal}
+        onGenerateAudio={handleGenerateAudio}
+        generatingAudio={generatingAudio}
+      />
     </main>
   )
 }
