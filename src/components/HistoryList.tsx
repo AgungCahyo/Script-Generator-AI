@@ -1,5 +1,7 @@
 'use client'
 
+import { VolumeHighOutline, TrashOutline } from 'react-ionicons'
+
 interface Script {
     id: string
     topic: string
@@ -59,9 +61,7 @@ export default function HistoryList({ scripts, onSelect, onDelete }: HistoryList
                         <div className="flex items-center gap-2">
                             <p className="text-sm text-neutral-900 truncate">{script.topic}</p>
                             {script.audioUrl && (
-                                <svg className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                </svg>
+                                <VolumeHighOutline color="#a3a3a3" width="14px" height="14px" />
                             )}
                         </div>
                         <p className="text-xs text-neutral-400 mt-0.5">{formatDate(script.createdAt)}</p>
@@ -75,9 +75,7 @@ export default function HistoryList({ scripts, onSelect, onDelete }: HistoryList
                             }}
                             className="p-1 text-neutral-400 hover:text-red-600 transition-colors"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
+                            <TrashOutline color="currentColor" width="16px" height="16px" />
                         </button>
                     </div>
                 </div>

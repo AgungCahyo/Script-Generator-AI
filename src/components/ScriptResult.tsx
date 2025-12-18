@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import AudioPlayer from './AudioPlayer'
+import { VolumeHighOutline, Reload, DocumentTextOutline } from 'react-ionicons'
 
 interface Script {
     id: string
@@ -83,10 +84,9 @@ export default function ScriptResult({ script, onRefresh, onViewDetail }: Script
             <div className="p-4">
                 {script.status === 'processing' && (
                     <div className="py-12 text-center">
-                        <svg className="animate-spin h-5 w-5 mx-auto text-neutral-400 mb-3" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
+                        <div className="mb-3 flex justify-center">
+                            <Reload color="#a3a3a3" width="20px" height="20px" cssClasses="animate-spin" />
+                        </div>
                         <p className="text-sm text-neutral-500">Generating script...</p>
                         <p className="text-xs text-neutral-400 mt-1">This may take 30-60 seconds</p>
                     </div>
@@ -109,17 +109,12 @@ export default function ScriptResult({ script, onRefresh, onViewDetail }: Script
                             >
                                 {generatingAudio ? (
                                     <>
-                                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                        </svg>
+                                        <Reload color="currentColor" width="16px" height="16px" cssClasses="animate-spin" />
                                         Generating Audio...
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                        </svg>
+                                        <VolumeHighOutline color="currentColor" width="16px" height="16px" />
                                         Generate Audio
                                     </>
                                 )}
@@ -149,9 +144,7 @@ export default function ScriptResult({ script, onRefresh, onViewDetail }: Script
                             onClick={onViewDetail}
                             className="w-full h-10 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <DocumentTextOutline color="currentColor" width="16px" height="16px" />
                             View Full Script
                         </button>
                     </div>

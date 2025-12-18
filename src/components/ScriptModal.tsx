@@ -2,6 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import AudioPlayer from './AudioPlayer'
+import {
+    DocumentTextOutline,
+    CloseOutline,
+    CopyOutline,
+    CheckmarkOutline,
+    VolumeHighOutline,
+    Reload
+} from 'react-ionicons'
 
 interface Script {
     id: string
@@ -31,7 +39,6 @@ export default function ScriptModal({
 }: ScriptModalProps) {
     const [copied, setCopied] = useState(false)
 
-    // Close on escape key
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose()
@@ -77,14 +84,12 @@ export default function ScriptModal({
 
             {/* Modal */}
             <div className="relative w-full max-w-4xl max-h-[90vh] mx-4 flex flex-col bg-neutral-100 rounded-lg shadow-2xl overflow-hidden">
-                {/* Toolbar - MS Word style */}
+                {/* Toolbar */}
                 <div className="flex-shrink-0 bg-white border-b border-neutral-200">
                     {/* Title bar */}
                     <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100">
                         <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z" />
-                            </svg>
+                            <DocumentTextOutline color="#2563eb" width="20px" height="20px" />
                             <span className="text-sm font-medium text-neutral-700 truncate max-w-md">
                                 {script.topic}
                             </span>
@@ -93,9 +98,7 @@ export default function ScriptModal({
                             onClick={onClose}
                             className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                            <CloseOutline color="currentColor" width="20px" height="20px" />
                         </button>
                     </div>
 
@@ -105,9 +108,11 @@ export default function ScriptModal({
                             onClick={copyToClipboard}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
+                            {copied ? (
+                                <CheckmarkOutline color="currentColor" width="16px" height="16px" />
+                            ) : (
+                                <CopyOutline color="currentColor" width="16px" height="16px" />
+                            )}
                             {copied ? 'Copied!' : 'Copy'}
                         </button>
 
@@ -115,9 +120,7 @@ export default function ScriptModal({
 
                         {script.audioUrl ? (
                             <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-green-600">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
+                                <CheckmarkOutline color="currentColor" width="16px" height="16px" />
                                 Audio Generated
                             </span>
                         ) : (
@@ -128,17 +131,12 @@ export default function ScriptModal({
                             >
                                 {generatingAudio ? (
                                     <>
-                                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                        </svg>
+                                        <Reload color="currentColor" width="16px" height="16px" cssClasses="animate-spin" />
                                         Generating...
                                     </>
                                 ) : (
                                     <>
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                        </svg>
+                                        <VolumeHighOutline color="currentColor" width="16px" height="16px" />
                                         Generate Audio
                                     </>
                                 )}
@@ -147,10 +145,9 @@ export default function ScriptModal({
                     </div>
                 </div>
 
-                {/* Document area - MS Word paper style */}
+                {/* Document area */}
                 <div className="flex-1 overflow-auto p-8">
                     <div className="max-w-3xl mx-auto bg-white rounded shadow-sm border border-neutral-200 min-h-full">
-                        {/* Page content */}
                         <div className="p-12">
                             {/* Header */}
                             <div className="mb-8 pb-6 border-b border-neutral-100">
@@ -178,10 +175,9 @@ export default function ScriptModal({
                                 </div>
                             ) : script.status === 'processing' ? (
                                 <div className="py-16 text-center">
-                                    <svg className="animate-spin h-6 w-6 mx-auto text-neutral-400 mb-3" viewBox="0 0 24 24" fill="none">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
+                                    <div className="mb-3 flex justify-center">
+                                        <Reload color="#a3a3a3" width="24px" height="24px" cssClasses="animate-spin" />
+                                    </div>
                                     <p className="text-sm text-neutral-500">Generating script...</p>
                                 </div>
                             ) : script.status === 'failed' ? (
@@ -201,7 +197,7 @@ export default function ScriptModal({
                 </div>
 
                 {/* Status bar */}
-                <div className="flex-shrink-0 bg-blue-600 px-4 py-1 flex items-center justify-between text-xs text-white">
+                <div className="flex-shrink-0 bg-black px-4 py-1 flex items-center justify-between text-xs text-white">
                     <span>
                         {script.script ? `${script.script.length.toLocaleString()} characters` : 'No content'}
                     </span>
