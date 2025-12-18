@@ -15,9 +15,10 @@ interface Script {
 interface ScriptResultProps {
     script: Script
     onRefresh: () => void
+    onViewDetail: () => void
 }
 
-export default function ScriptResult({ script, onRefresh }: ScriptResultProps) {
+export default function ScriptResult({ script, onRefresh, onViewDetail }: ScriptResultProps) {
     const [generatingAudio, setGeneratingAudio] = useState(false)
     const [copied, setCopied] = useState(false)
 
@@ -39,7 +40,6 @@ export default function ScriptResult({ script, onRefresh }: ScriptResultProps) {
             if (!data.success) {
                 alert(data.error || 'Failed to start audio generation')
             }
-            // Start polling for audio
             const pollAudio = setInterval(async () => {
                 const scriptRes = await fetch(`/api/scripts/${script.id}`)
                 const scriptData = await scriptRes.json()
@@ -49,7 +49,6 @@ export default function ScriptResult({ script, onRefresh }: ScriptResultProps) {
                     onRefresh()
                 }
             }, 3000)
-            // Timeout after 2 minutes
             setTimeout(() => {
                 clearInterval(pollAudio)
                 setGeneratingAudio(false)
@@ -127,11 +126,11 @@ export default function ScriptResult({ script, onRefresh }: ScriptResultProps) {
                             </button>
                         )}
 
-                        {/* Script Text */}
+                        {/* Script Preview */}
                         {script.script && (
                             <div>
                                 <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs text-neutral-500">Script</p>
+                                    <p className="text-xs text-neutral-500">Script Preview</p>
                                     <button
                                         onClick={copyToClipboard}
                                         className="text-xs text-neutral-500 hover:text-neutral-900 transition-colors"
@@ -139,11 +138,22 @@ export default function ScriptResult({ script, onRefresh }: ScriptResultProps) {
                                         {copied ? 'Copied!' : 'Copy'}
                                     </button>
                                 </div>
-                                <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-mono leading-relaxed max-h-80 overflow-y-auto bg-neutral-50 rounded-lg p-4">
-                                    {script.script}
+                                <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-mono leading-relaxed max-h-40 overflow-y-auto bg-neutral-50 rounded-lg p-4">
+                                    {script.script.slice(0, 500)}{script.script.length > 500 ? '...' : ''}
                                 </pre>
                             </div>
                         )}
+
+                        {/* View Detail Button */}
+                        <button
+                            onClick={onViewDetail}
+                            className="w-full h-10 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            View Full Script
+                        </button>
                     </div>
                 )}
             </div>

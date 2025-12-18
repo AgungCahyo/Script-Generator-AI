@@ -42,7 +42,6 @@ export default function Home() {
       const data = await res.json()
       if (data.script) {
         setCurrentScript(data.script)
-        // Also update modal script if open
         if (modalScript?.id === scriptId) {
           setModalScript(data.script)
         }
@@ -121,9 +120,7 @@ export default function Home() {
   }
 
   const handleRefresh = () => {
-    if (currentScript?.id) {
-      pollScriptStatus(currentScript.id)
-    }
+    if (currentScript?.id) pollScriptStatus(currentScript.id)
     fetchScripts()
   }
 
@@ -142,9 +139,7 @@ export default function Home() {
     setGeneratingAudio(true)
 
     try {
-      const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, {
-        method: 'POST',
-      })
+      const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, { method: 'POST' })
       const data = await res.json()
 
       if (!data.success) {
@@ -153,7 +148,6 @@ export default function Home() {
         return
       }
 
-      // Poll for audio
       const pollAudio = setInterval(async () => {
         const scriptRes = await fetch(`/api/scripts/${modalScript.id}`)
         const scriptData = await scriptRes.json()
@@ -165,7 +159,6 @@ export default function Home() {
         }
       }, 3000)
 
-      // Timeout after 2 minutes
       setTimeout(() => {
         clearInterval(pollAudio)
         setGeneratingAudio(false)
@@ -192,7 +185,11 @@ export default function Home() {
         {currentScript && (
           <section>
             <h2 className="text-sm text-neutral-600 mb-3">Result</h2>
-            <ScriptResult script={currentScript} onRefresh={handleRefresh} />
+            <ScriptResult
+              script={currentScript}
+              onRefresh={handleRefresh}
+              onViewDetail={() => openModal(currentScript)}
+            />
           </section>
         )}
 
@@ -206,7 +203,6 @@ export default function Home() {
         </section>
       </div>
 
-      {/* Script Detail Modal */}
       <ScriptModal
         script={modalScript}
         isOpen={modalOpen}
