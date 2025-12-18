@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { scriptId, script, audioBase64, status, error } = body
+        const { scriptId, script, audioUrl, audioBase64, status, error } = body
 
         if (!scriptId) {
             return NextResponse.json({ error: 'scriptId is required' }, { status: 400 })
@@ -26,7 +26,10 @@ export async function POST(request: NextRequest) {
             updateData.script = script
         }
 
-        if (audioBase64 !== undefined && audioBase64 !== null) {
+        // Support both audioUrl (Google Drive) and audioBase64 (legacy)
+        if (audioUrl !== undefined && audioUrl !== null) {
+            updateData.audioUrl = audioUrl
+        } else if (audioBase64 !== undefined && audioBase64 !== null) {
             updateData.audioUrl = `data:audio/mpeg;base64,${audioBase64}`
         }
 
