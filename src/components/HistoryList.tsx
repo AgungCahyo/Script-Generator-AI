@@ -8,6 +8,7 @@ interface Script {
     status: string
     error: string | null
     createdAt: string
+    updatedAt: string
 }
 
 interface HistoryListProps {
