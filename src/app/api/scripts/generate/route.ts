@@ -12,13 +12,18 @@ import {
     DEFAULT_LANGUAGE,
     DEFAULT_HOOK_STYLE
 } from '@/lib/constants/script-options'
+import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
+import { parseGeminiError, parseDatabaseError } from '@/lib/utils/errors'
 
 // POST: Generate script with streaming
 export async function POST(request: NextRequest) {
     try {
         const user = await getUserFromRequest(request)
         if (!user) {
-            return new Response('Unauthorized', { status: 401 })
+            return new Response(
+                JSON.stringify({ error: ERROR_MESSAGES.UNAUTHORIZED }),
+                { status: 401, headers: { 'Content-Type': 'application/json' } }
+            )
         }
 
         const body = await request.json()
@@ -36,29 +41,52 @@ export async function POST(request: NextRequest) {
         } = body
 
         if (!topic) {
-            return new Response('Topic is required', { status: 400 })
+            return new Response(
+                JSON.stringify({ error: ERROR_MESSAGES.TOPIC_REQUIRED }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
+            )
         }
 
         // Ensure user exists in database
-        await prisma.user.upsert({
-            where: { id: user.uid },
-            update: { email: user.email || '' },
-            create: { id: user.uid, email: user.email || '' }
-        })
+        try {
+            await prisma.user.upsert({
+                where: { id: user.uid },
+                update: { email: user.email || '' },
+                create: { id: user.uid, email: user.email || '' }
+            })
+        } catch (error) {
+            const dbError = parseDatabaseError(error)
+            return new Response(
+                JSON.stringify({ error: dbError.userMessage }),
+                { status: dbError.statusCode, headers: { 'Content-Type': 'application/json' } }
+            )
+        }
 
         // Create script record
-        const script = await prisma.script.create({
-            data: {
-                topic,
-                status: 'processing',
-                userId: user.uid,
-            },
-        })
+        let script
+        try {
+            script = await prisma.script.create({
+                data: {
+                    topic,
+                    status: 'processing',
+                    userId: user.uid,
+                },
+            })
+        } catch (error) {
+            const dbError = parseDatabaseError(error)
+            return new Response(
+                JSON.stringify({ error: dbError.userMessage }),
+                { status: dbError.statusCode, headers: { 'Content-Type': 'application/json' } }
+            )
+        }
 
         // Initialize Gemini
         const apiKey = process.env.GEMINI_API_KEY
         if (!apiKey) {
-            return new Response('Gemini API key not configured', { status: 500 })
+            return new Response(
+                JSON.stringify({ error: ERROR_MESSAGES.API_KEY_MISSING }),
+                { status: 500, headers: { 'Content-Type': 'application/json' } }
+            )
         }
 
         const genAI = initializeGemini(apiKey)
@@ -106,16 +134,26 @@ export async function POST(request: NextRequest) {
                 } catch (error) {
                     console.error('Streaming error:', error)
 
-                    // Update script as failed
-                    await prisma.script.update({
-                        where: { id: script.id },
-                        data: {
-                            status: 'failed',
-                            error: error instanceof Error ? error.message : 'Unknown error'
-                        }
-                    })
+                    // Parse error to user-friendly message
+                    const appError = parseGeminiError(error)
 
-                    controller.error(error)
+                    // Update script as failed with user-friendly error
+                    try {
+                        await prisma.script.update({
+                            where: { id: script.id },
+                            data: {
+                                status: 'failed',
+                                error: appError.userMessage
+                            }
+                        })
+                    } catch (dbError) {
+                        console.error('Failed to update script status:', dbError)
+                    }
+
+                    // Send error message to client as JSON
+                    const errorMessage = JSON.stringify({ error: appError.userMessage })
+                    controller.enqueue(encoder.encode(`\n\nERROR: ${errorMessage}`))
+                    controller.close()
                 }
             }
         })
@@ -130,6 +168,9 @@ export async function POST(request: NextRequest) {
         })
     } catch (error) {
         console.error('Error in generate stream:', error)
-        return new Response('Internal server error', { status: 500 })
+        return new Response(
+            JSON.stringify({ error: ERROR_MESSAGES.INTERNAL_ERROR }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+        )
     }
 }

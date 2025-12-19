@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getUserFromRequest } from '@/lib/api/auth'
+import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
+import { parseDatabaseError } from '@/lib/utils/errors'
 
 // GET: Fetch single script by ID
 export async function GET(
@@ -10,7 +12,7 @@ export async function GET(
     try {
         const user = await getUserFromRequest(request)
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: ERROR_MESSAGES.UNAUTHORIZED }, { status: 401 })
         }
 
         const { id } = await params
@@ -20,15 +22,16 @@ export async function GET(
         })
 
         if (!script) {
-            return NextResponse.json({ error: 'Script not found' }, { status: 404 })
+            return NextResponse.json({ error: ERROR_MESSAGES.SCRIPT_NOT_FOUND }, { status: 404 })
         }
 
         return NextResponse.json({ script })
     } catch (error) {
         console.error('Error fetching script:', error)
+        const dbError = parseDatabaseError(error)
         return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+            { error: dbError.userMessage },
+            { status: dbError.statusCode }
         )
     }
 }
@@ -60,9 +63,10 @@ export async function DELETE(
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error('Error deleting script:', error)
+        const dbError = parseDatabaseError(error)
         return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+            { error: dbError.userMessage },
+            { status: dbError.statusCode }
         )
     }
 }
@@ -109,9 +113,10 @@ export async function PATCH(
         return NextResponse.json({ success: true, script: updatedScript })
     } catch (error) {
         console.error('Error updating script:', error)
+        const dbError = parseDatabaseError(error)
         return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
+            { error: dbError.userMessage },
+            { status: dbError.statusCode }
         )
     }
 }

@@ -93,7 +93,13 @@ export default function Home() {
       })
 
       if (!res.ok) {
-        alert('Failed to start script generation')
+        // Try to parse error from JSON response
+        try {
+          const errorData = await res.json()
+          alert(errorData.error || 'Failed to start script generation')
+        } catch {
+          alert('Failed to start script generation')
+        }
         setLoading(false)
         return
       }
@@ -127,6 +133,7 @@ export default function Home() {
       let accumulatedText = ''
       let displayedText = ''
       let updateInterval: NodeJS.Timeout | null = null
+      let hasError = false
 
       // Update display gradually for natural typing effect
       const startTypingAnimation = () => {
@@ -150,9 +157,32 @@ export default function Home() {
         const { done, value } = await reader.read()
 
         if (done) {
-          // Make sure all text is displayed
-          displayedText = accumulatedText
-          setCurrentScript(prev => prev ? { ...prev, script: accumulatedText, status: 'completed' } : null)
+          // Check if there's an error in the accumulated text
+          if (accumulatedText.includes('ERROR:')) {
+            const errorMatch = accumulatedText.match(/ERROR:\s*(\{.*\})/)
+            if (errorMatch) {
+              try {
+                const errorData = JSON.parse(errorMatch[1])
+                alert(errorData.error || 'Failed to generate script')
+                setCurrentScript(prev => prev ? {
+                  ...prev,
+                  status: 'failed',
+                  error: errorData.error
+                } : null)
+                hasError = true
+              } catch {
+                alert('Failed to generate script')
+              }
+            }
+            // Remove error marker from text
+            accumulatedText = accumulatedText.replace(/\n\nERROR:.*$/, '')
+          }
+
+          if (!hasError) {
+            // Make sure all text is displayed
+            displayedText = accumulatedText
+            setCurrentScript(prev => prev ? { ...prev, script: accumulatedText, status: 'completed' } : null)
+          }
 
           if (updateInterval) clearInterval(updateInterval)
           setLoading(false)
@@ -166,7 +196,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error:', error)
-      alert('Failed to connect to server')
+      alert('Network error. Please check your connection and try again')
       setLoading(false)
     }
   }
