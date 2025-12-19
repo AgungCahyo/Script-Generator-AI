@@ -16,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [currentScript, setCurrentScript] = useState<Script | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
+  const [fetchingHistory, setFetchingHistory] = useState(false)
   const [polling, setPolling] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalScript, setModalScript] = useState<Script | null>(null)
@@ -24,6 +25,7 @@ export default function Home() {
 
   const fetchScripts = useCallback(async () => {
     if (!user) return
+    setFetchingHistory(true)
     try {
       const token = await getIdToken()
       const res = await fetch('/api/scripts', {
@@ -33,6 +35,8 @@ export default function Home() {
       if (data.scripts) setScripts(data.scripts)
     } catch (error) {
       console.error('Error fetching scripts:', error)
+    } finally {
+      setFetchingHistory(false)
     }
   }, [user, getIdToken])
 
@@ -319,6 +323,7 @@ export default function Home() {
               scripts={scripts}
               onSelect={openModal}
               onDelete={handleDelete}
+              loading={fetchingHistory}
             />
           ) : (
             <div className="text-center py-8 text-neutral-400 text-sm">

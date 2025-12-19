@@ -17,9 +17,10 @@ interface HistoryListProps {
     scripts: Script[]
     onSelect: (script: Script) => void
     onDelete: (id: string) => void
+    loading?: boolean
 }
 
-export default function HistoryList({ scripts, onSelect, onDelete }: HistoryListProps) {
+export default function HistoryList({ scripts, onSelect, onDelete, loading = false }: HistoryListProps) {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleString('id-ID', {
             day: '2-digit',
@@ -39,6 +40,17 @@ export default function HistoryList({ scripts, onSelect, onDelete }: HistoryList
             default:
                 return `${base} bg-red-50 text-red-700`
         }
+    }
+
+    if (loading && scripts.length === 0) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-3 border-neutral-200 border-t-neutral-600 rounded-full animate-spin"></div>
+                    <p className="text-sm text-neutral-400">Loading history...</p>
+                </div>
+            </div>
+        )
     }
 
     if (scripts.length === 0) {
