@@ -32,6 +32,7 @@ interface ScriptModalProps {
     onGenerateAudio: () => void
     generatingAudio: boolean
     onScriptUpdated: (script: Script) => void
+    onRetry?: (scriptId: string) => void
 }
 
 export default function ScriptModal({
@@ -40,7 +41,8 @@ export default function ScriptModal({
     onClose,
     onGenerateAudio,
     generatingAudio,
-    onScriptUpdated
+    onScriptUpdated,
+    onRetry
 }: ScriptModalProps) {
     const [copied, setCopied] = useState(false)
     const [isEditing, setIsEditing] = useState(false)
@@ -114,7 +116,15 @@ export default function ScriptModal({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ script: editedScript }),
             })
+
             const data = await res.json()
+
+            if (!res.ok) {
+                // API returned an error
+                alert(data.error || 'Failed to save script')
+                return
+            }
+
             if (data.success && data.script) {
                 onScriptUpdated(data.script)
                 setIsEditing(false)
@@ -123,7 +133,7 @@ export default function ScriptModal({
             }
         } catch (error) {
             console.error('Error saving script:', error)
-            alert('Failed to save script')
+            alert('Network error. Please check your connection and try again')
         } finally {
             setSaving(false)
         }
@@ -263,9 +273,20 @@ export default function ScriptModal({
                             {isEditing ? (
                                 <textarea
                                     value={editedScript}
-                                    onChange={(e) => setEditedScript(e.target.value)}
-                                    className="w-full min-h-[400px] text-sm leading-7 text-neutral-700 font-mono p-4 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-neutral-900 resize-y"
+                                    onChange={(e) => {
+                                        setEditedScript(e.target.value)
+                                        // Auto-resize textarea
+                                        e.target.style.height = 'auto'
+                                        e.target.style.height = e.target.scrollHeight + 'px'
+                                    }}
+                                    className="w-full text-sm leading-7 text-neutral-700 font-mono p-4 border border-neutral-200 rounded-lg focus:outline-none  resize-none overflow-hidden"
+                                    style={{ minHeight: '400px', height: 'auto' }}
                                     placeholder="Enter script content..."
+                                    onFocus={(e) => {
+                                        // Set initial height on focus
+                                        e.target.style.height = 'auto'
+                                        e.target.style.height = e.target.scrollHeight + 'px'
+                                    }}
                                 />
                             ) : script.script ? (
                                 <div className="prose prose-neutral max-w-none">
@@ -282,7 +303,15 @@ export default function ScriptModal({
                                 </div>
                             ) : script.status === 'failed' ? (
                                 <div className="py-16 text-center">
-                                    <p className="text-sm text-red-600">{script.error || 'Failed to generate script'}</p>
+                                    <p className="text-sm text-red-600 mb-4">{script.error || 'Failed to generate script'}</p>
+                                    {onRetry && (
+                                        <button
+                                            onClick={() => onRetry(script.id)}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors"
+                                        >
+                                            Retry Generation
+                                        </button>
+                                    )}
                                 </div>
                             ) : null}
                         </div>

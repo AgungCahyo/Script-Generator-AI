@@ -255,7 +255,7 @@ export default function Home() {
       })
       const data = await res.json()
 
-      if (!data.success) {
+      if (!res.ok || !data.success) {
         alert(data.error || 'Failed to start audio generation')
         setGeneratingAudio(false)
         return
@@ -280,8 +280,35 @@ export default function Home() {
       }, 120000)
     } catch (error) {
       console.error('Error generating audio:', error)
+      alert('Network error. Please check your connection and try again')
       setGeneratingAudio(false)
     }
+  }
+
+  const handleRetry = async (scriptId: string) => {
+    const scriptToRetry = scripts.find(s => s.id === scriptId)
+    if (!scriptToRetry) return
+
+    // Close modal
+    closeModal()
+
+    // Delete the failed script
+    try {
+      const token = await getIdToken()
+      await fetch(`/api/scripts/${scriptId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } catch (error) {
+      console.error('Error deleting failed script:', error)
+    }
+
+    // Refresh scripts list
+    fetchScripts()
+
+    // Re-submit with same topic (user can modify if needed)
+    // For now, just scroll to form - user will manually retry
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // Show loading while checking auth
@@ -370,6 +397,7 @@ export default function Home() {
         onGenerateAudio={handleGenerateAudio}
         generatingAudio={generatingAudio}
         onScriptUpdated={handleScriptUpdated}
+        onRetry={handleRetry}
       />
 
       <LoginModal

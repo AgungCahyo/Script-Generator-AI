@@ -1,84 +1,249 @@
 'use client'
 
-import { useState } from 'react'
-import { DownloadOutline, PlayOutline, MusicalNotesOutline } from 'react-ionicons'
+import { useState, useRef, useEffect } from 'react'
+import {
+    PlayOutline,
+    PauseOutline,
+    VolumeHighOutline,
+    VolumeMuteOutline,
+    DownloadOutline
+} from 'react-ionicons'
 
 interface AudioPlayerProps {
     src: string
 }
 
 export default function AudioPlayer({ src }: AudioPlayerProps) {
-    const [showEmbed, setShowEmbed] = useState(false)
+    const audioRef = useRef<HTMLAudioElement>(null)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const [currentTime, setCurrentTime] = useState(0)
+    const [duration, setDuration] = useState(0)
+    const [volume, setVolume] = useState(1)
+    const [isMuted, setIsMuted] = useState(false)
+    const [playbackRate, setPlaybackRate] = useState(1)
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
-    // Check if it's a Google Drive URL
-    const isGoogleDrive = src.includes('drive.google.com') || src.includes('googleapis.com')
+    useEffect(() => {
+        const audio = audioRef.current
+        if (!audio) return
 
-    // Extract file ID from Google Drive URL
-    const getFileId = (url: string) => {
-        const match = url.match(/id=([^&]+)/) || url.match(/\/d\/([^/]+)/)
-        return match ? match[1] : null
+        const updateTime = () => setCurrentTime(audio.currentTime)
+        const updateDuration = () => {
+            setDuration(audio.duration)
+            setIsLoading(false)
+        }
+        const handleEnded = () => setIsPlaying(false)
+        const handleCanPlay = () => setIsLoading(false)
+        const handleError = () => {
+            setError('Failed to load audio')
+            setIsLoading(false)
+            console.error('Audio load error:', audio.error)
+        }
+
+        audio.addEventListener('timeupdate', updateTime)
+        audio.addEventListener('loadedmetadata', updateDuration)
+        audio.addEventListener('ended', handleEnded)
+        audio.addEventListener('canplay', handleCanPlay)
+        audio.addEventListener('error', handleError)
+
+        return () => {
+            audio.removeEventListener('timeupdate', updateTime)
+            audio.removeEventListener('loadedmetadata', updateDuration)
+            audio.removeEventListener('ended', handleEnded)
+            audio.removeEventListener('canplay', handleCanPlay)
+            audio.removeEventListener('error', handleError)
+        }
+    }, [])
+
+    const togglePlay = async () => {
+        const audio = audioRef.current
+        if (!audio || isLoading) return
+
+        try {
+            if (isPlaying) {
+                audio.pause()
+                setIsPlaying(false)
+            } else {
+                await audio.play()
+                setIsPlaying(true)
+            }
+        } catch (err) {
+            console.error('Play error:', err)
+            setError('Failed to play audio. Please try downloading instead.')
+            setIsPlaying(false)
+        }
     }
 
-    // For Google Drive, show download button and embed option
-    if (isGoogleDrive) {
-        const fileId = getFileId(src)
-        const embedUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : null
+    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const audio = audioRef.current
+        if (!audio) return
 
-        return (
-            <div className="bg-neutral-50 rounded-lg p-4">
-                <p className="text-xs text-neutral-500 mb-3">Audio</p>
+        const time = parseFloat(e.target.value)
+        audio.currentTime = time
+        setCurrentTime(time)
+    }
 
-                {/* Embed player */}
-                {showEmbed && embedUrl && (
-                    <div className="mb-3">
-                        <iframe
-                            src={embedUrl}
-                            width="100%"
-                            height="80"
-                            allow="autoplay"
-                            className="rounded-lg border border-neutral-200"
-                        />
-                    </div>
-                )}
+    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const audio = audioRef.current
+        if (!audio) return
 
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => setShowEmbed(!showEmbed)}
-                        className="flex-1 h-10 flex items-center justify-center gap-2 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors"
-                    >
-                        {showEmbed ? (
-                            <>
-                                <MusicalNotesOutline color="currentColor" width="16px" height="16px" />
-                                Hide Player
-                            </>
+        const vol = parseFloat(e.target.value)
+        audio.volume = vol
+        setVolume(vol)
+        setIsMuted(vol === 0)
+    }
+
+    const toggleMute = () => {
+        const audio = audioRef.current
+        if (!audio) return
+
+        if (isMuted) {
+            audio.volume = volume || 0.5
+            setIsMuted(false)
+        } else {
+            audio.volume = 0
+            setIsMuted(true)
+        }
+    }
+
+    const handleSpeedChange = (speed: number) => {
+        const audio = audioRef.current
+        if (!audio) return
+
+        audio.playbackRate = speed
+        setPlaybackRate(speed)
+    }
+
+    const formatTime = (seconds: number) => {
+        if (isNaN(seconds)) return '0:00'
+        const mins = Math.floor(seconds / 60)
+        const secs = Math.floor(seconds % 60)
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+    }
+
+    // Normalize Google Drive URL to use proxy
+    const getAudioSrc = () => {
+        if (!src) return ''
+
+        // If it's already a data URL, return as-is (no proxy needed)
+        if (src.startsWith('data:')) return src
+
+        // For Google Drive URLs, use proxy to bypass CORS
+        if (src.includes('drive.google.com')) {
+            return `/api/audio/proxy?url=${encodeURIComponent(src)}`
+        }
+
+        return src
+    }
+
+    return (
+        <div className="bg-neutral-50 rounded-lg p-2.5 sm:p-4 border border-neutral-200">
+            <audio
+                ref={audioRef}
+                src={getAudioSrc()}
+                preload="metadata"
+                crossOrigin="anonymous"
+            />
+
+            {/* Error Message */}
+            {error && (
+                <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                    {error}
+                </div>
+            )}
+
+            {/* Main Controls */}
+            <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                {/* Play/Pause Button */}
+                <button
+                    onClick={togglePlay}
+                    disabled={isLoading || !!error}
+                    className="flex-shrink-0 w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                >
+                    {isPlaying ? (
+                        <PauseOutline color="#ffffff" width="20px" height="20px" />
+                    ) : (
+                        <PlayOutline color="#ffffff" width="20px" height="20px" />
+                    )}
+                </button>
+
+                {/* Progress Bar */}
+                <div className="flex-1 min-w-0 flex items-center gap-1.5 sm:gap-2">
+                    <span className="hidden xs:inline text-[10px] sm:text-xs text-neutral-500 font-mono tabular-nums">
+                        {formatTime(currentTime)}
+                    </span>
+                    <input
+                        type="range"
+                        min="0"
+                        max={duration || 0}
+                        value={currentTime}
+                        onChange={handleSeek}
+                        disabled={isLoading || !!error}
+                        className="flex-1 min-w-0 h-1.5 sm:h-2 bg-neutral-200 rounded-full appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 sm:[&::-webkit-slider-thumb]:w-4 sm:[&::-webkit-slider-thumb]:h-4
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-900
+                            [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 sm:[&::-moz-range-thumb]:w-4 sm:[&::-moz-range-thumb]:h-4 
+                            [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neutral-900 [&::-moz-range-thumb]:border-0"
+                    />
+                    <span className="text-[10px] sm:text-xs text-neutral-500 font-mono tabular-nums whitespace-nowrap">
+                        {isLoading ? '--:--' : formatTime(duration)}
+                    </span>
+                </div>
+
+                {/* Volume Control - Desktop only */}
+                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                    <button onClick={toggleMute} className="p-1.5 rounded hover:bg-neutral-200 transition-colors">
+                        {isMuted || volume === 0 ? (
+                            <VolumeMuteOutline color="#a3a3a3" width="18px" height="18px" />
                         ) : (
-                            <>
-                                <PlayOutline color="currentColor" width="16px" height="16px" />
-                                Play Audio
-                            </>
+                            <VolumeHighOutline color="#a3a3a3" width="18px" height="18px" />
                         )}
                     </button>
-                    <a
-                        href={src}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="h-10 px-4 flex items-center justify-center gap-2 text-sm font-medium border border-neutral-200 rounded-lg hover:bg-neutral-100 transition-colors"
-                    >
-                        <DownloadOutline color="currentColor" width="16px" height="16px" />
-                        Download
-                    </a>
+                    <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={isMuted ? 0 : volume}
+                        onChange={handleVolumeChange}
+                        className="w-20 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-900
+                            [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full 
+                            [&::-moz-range-thumb]:bg-neutral-900 [&::-moz-range-thumb]:border-0"
+                    />
                 </div>
             </div>
-        )
-    }
 
-    // For data URLs or direct audio URLs, use native audio player
-    return (
-        <div className="bg-neutral-50 rounded-lg p-4">
-            <p className="text-xs text-neutral-500 mb-2">Audio</p>
-            <audio controls className="w-full h-10" src={src}>
-                Your browser does not support the audio element.
-            </audio>
+            {/* Secondary Controls */}
+            <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                {/* Speed Control */}
+                <div className="flex items-center gap-0.5 sm:gap-1">
+                    {[0.5, 1, 1.5, 2].map((speed) => (
+                        <button
+                            key={speed}
+                            onClick={() => handleSpeedChange(speed)}
+                            className={`px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium rounded transition-colors active:scale-95 touch-manipulation ${playbackRate === speed
+                                ? 'bg-neutral-900 text-white'
+                                : 'text-neutral-500 hover:bg-neutral-200 active:bg-neutral-300'
+                                }`}
+                        >
+                            {speed}x
+                        </button>
+                    ))}
+                </div>
+
+                {/* Download Button */}
+                <a
+                    href={src}
+                    download
+                    className="flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 rounded transition-all active:scale-95 touch-manipulation"
+                >
+                    <DownloadOutline color="currentColor" width="14px" height="14px" />
+                    <span className="hidden sm:inline">Download</span>
+                </a>
+            </div>
         </div>
     )
 }

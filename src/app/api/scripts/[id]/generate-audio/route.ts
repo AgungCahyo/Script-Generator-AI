@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getUserFromRequest } from '@/lib/api/auth'
+import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
 
 // POST: Trigger TTS generation for a script
 export async function POST(
@@ -10,7 +11,7 @@ export async function POST(
     try {
         const user = await getUserFromRequest(request)
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            return NextResponse.json({ error: ERROR_MESSAGES.UNAUTHORIZED }, { status: 401 })
         }
 
         const { id } = await params
@@ -21,17 +22,17 @@ export async function POST(
         })
 
         if (!script) {
-            return NextResponse.json({ error: 'Script not found' }, { status: 404 })
+            return NextResponse.json({ error: ERROR_MESSAGES.SCRIPT_NOT_FOUND }, { status: 404 })
         }
 
         if (!script.script) {
-            return NextResponse.json({ error: 'Script has no content' }, { status: 400 })
+            return NextResponse.json({ error: 'Script has no content to convert' }, { status: 400 })
         }
 
         // Trigger TTS webhook
         const ttsWebhookUrl = process.env.N8N_TTS_WEBHOOK_URL
         if (!ttsWebhookUrl) {
-            return NextResponse.json({ error: 'TTS webhook not configured' }, { status: 500 })
+            return NextResponse.json({ error: ERROR_MESSAGES.AUDIO_SERVICE_UNAVAILABLE }, { status: 500 })
         }
 
         const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://web-trigger.vercel.app'}/api/scripts/callback`
@@ -50,7 +51,7 @@ export async function POST(
     } catch (error) {
         console.error('Error triggering TTS:', error)
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: ERROR_MESSAGES.AUDIO_GENERATION_FAILED },
             { status: 500 }
         )
     }
