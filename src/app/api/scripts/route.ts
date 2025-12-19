@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { verifyToken } from '@/lib/firebase-admin'
-
-// Helper to get user from token
-async function getUserFromRequest(request: NextRequest) {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-        return null
-    }
-    const token = authHeader.split('Bearer ')[1]
-    return await verifyToken(token)
-}
+import { getUserFromRequest } from '@/lib/api/auth'
 
 // GET: Fetch all scripts for authenticated user
 export async function GET(request: NextRequest) {

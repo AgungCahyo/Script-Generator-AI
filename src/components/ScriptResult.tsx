@@ -83,12 +83,24 @@ export default function ScriptResult({ script, onRefresh, onViewDetail }: Script
             {/* Content */}
             <div className="p-4">
                 {script.status === 'processing' && (
-                    <div className="py-12 text-center">
-                        <div className="mb-3 flex justify-center">
-                            <Reload color="#a3a3a3" width="20px" height="20px" cssClasses="animate-spin" />
-                        </div>
-                        <p className="text-sm text-neutral-500">Generating script...</p>
-                        <p className="text-xs text-neutral-400 mt-1">This may take 30-60 seconds</p>
+                    <div className="space-y-4">
+                        {script.script ? (
+                            <div>
+                                <p className="text-xs text-neutral-500 mb-2">Generating script...</p>
+                                <pre className="text-sm text-neutral-700 whitespace-pre-wrap font-mono leading-relaxed bg-neutral-50 rounded-lg p-4 relative">
+                                    {script.script}
+                                    <span className="inline-block w-2 h-4 bg-neutral-900 ml-1 animate-pulse" />
+                                </pre>
+                            </div>
+                        ) : (
+                            <div className="py-12 text-center">
+                                <div className="mb-3 flex justify-center">
+                                    <Reload color="#a3a3a3" width="20px" height="20px" cssClasses="animate-spin" />
+                                </div>
+                                <p className="text-sm text-neutral-500">Starting generation...</p>
+                                <p className="text-xs text-neutral-400 mt-1">Text will appear in a moment</p>
+                            </div>
+                        )}
                     </div>
                 )}
 

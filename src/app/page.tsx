@@ -8,17 +8,8 @@ import HistoryList from '@/components/HistoryList'
 import ScriptModal from '@/components/ScriptModal'
 import LoginModal from '@/components/LoginModal'
 import { LogOutOutline, PersonCircleOutline, LogInOutline } from 'react-ionicons'
-
-interface Script {
-  id: string
-  topic: string
-  script: string | null
-  audioUrl: string | null
-  status: string
-  error: string | null
-  createdAt: string
-  updatedAt: string
-}
+import { Script } from '@/lib/types/script'
+import { ScriptFormData } from '@/lib/types/form'
 
 export default function Home() {
   const { user, loading: authLoading, signOut, getIdToken } = useAuth()
@@ -80,38 +71,94 @@ export default function Home() {
     return () => { if (interval) clearInterval(interval) }
   }, [polling, currentScript?.id, pollScriptStatus])
 
-  const handleSubmit = async (topic: string) => {
+  const handleSubmit = async (formData: ScriptFormData) => {
     setLoading(true)
     setCurrentScript(null)
 
     try {
       const token = await getIdToken()
-      const res = await fetch('/api/scripts/trigger', {
+
+      // Call streaming API
+      const res = await fetch('/api/scripts/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ topic }),
+        body: JSON.stringify(formData),
       })
-      const data = await res.json()
 
-      if (data.success && data.scriptId) {
-        const newScript = {
-          id: data.scriptId,
-          topic,
-          script: null,
-          audioUrl: null,
-          status: 'processing',
-          error: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-        setCurrentScript(newScript)
-        setPolling(true)
-      } else {
-        alert(data.error || 'Failed to trigger script generation')
+      if (!res.ok) {
+        alert('Failed to start script generation')
         setLoading(false)
+        return
+      }
+
+      // Get script ID from headers
+      const scriptId = res.headers.get('X-Script-Id') || ''
+
+      // Initialize script object
+      const newScript: Script = {
+        id: scriptId,
+        topic: formData.topic,
+        script: '',
+        audioUrl: null,
+        status: 'processing',
+        error: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+      setCurrentScript(newScript)
+
+      // Read stream
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) {
+        alert('Failed to read stream')
+        setLoading(false)
+        return
+      }
+
+      let accumulatedText = ''
+      let displayedText = ''
+      let updateInterval: NodeJS.Timeout | null = null
+
+      // Update display gradually for natural typing effect
+      const startTypingAnimation = () => {
+        updateInterval = setInterval(() => {
+          if (displayedText.length < accumulatedText.length) {
+            // Add characters gradually (adjust speed here: lower = faster)
+            const charsToAdd = Math.min(3, accumulatedText.length - displayedText.length)
+            displayedText = accumulatedText.slice(0, displayedText.length + charsToAdd)
+
+            setCurrentScript(prev => prev ? {
+              ...prev,
+              script: displayedText
+            } : null)
+          }
+        }, 30) // Update every 30ms for smooth typing
+      }
+
+      startTypingAnimation()
+
+      while (true) {
+        const { done, value } = await reader.read()
+
+        if (done) {
+          // Make sure all text is displayed
+          displayedText = accumulatedText
+          setCurrentScript(prev => prev ? { ...prev, script: accumulatedText, status: 'completed' } : null)
+
+          if (updateInterval) clearInterval(updateInterval)
+          setLoading(false)
+          fetchScripts() // Refresh history
+          break
+        }
+
+        // Decode chunk and append to accumulated text (buffer)
+        const chunk = decoder.decode(value, { stream: true })
+        accumulatedText += chunk
       }
     } catch (error) {
       console.error('Error:', error)

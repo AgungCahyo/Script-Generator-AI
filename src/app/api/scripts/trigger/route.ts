@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { verifyToken } from '@/lib/firebase-admin'
-
-// Helper to get user from token
-async function getUserFromRequest(request: NextRequest) {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-        return null
-    }
-    const token = authHeader.split('Bearer ')[1]
-    return await verifyToken(token)
-}
+import { getUserFromRequest } from '@/lib/api/auth'
 
 // POST: Trigger script generation
 export async function POST(request: NextRequest) {
@@ -21,7 +11,17 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json()
-        const { topic } = body
+        const {
+            topic,
+            duration,
+            platform,
+            tone,
+            format,
+            targetAudience,
+            language,
+            hookStyle,
+            additionalNotes
+        } = body
 
         if (!topic) {
             return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
@@ -57,6 +57,14 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
                 scriptId: script.id,
                 topic,
+                duration: duration || '3m',
+                platform: platform || 'youtube',
+                tone: tone || 'casual',
+                format: format || 'monolog',
+                targetAudience: targetAudience || '',
+                language: language || 'id-casual',
+                hookStyle: hookStyle || 'question',
+                additionalNotes: additionalNotes || '',
                 callbackUrl,
             }),
         }).catch(err => console.error('Webhook error:', err))

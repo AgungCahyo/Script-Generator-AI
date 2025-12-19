@@ -10,6 +10,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^6.19.1",
     "dotenv": "^17.2.3",
     "firebase": "^12.7.0",
