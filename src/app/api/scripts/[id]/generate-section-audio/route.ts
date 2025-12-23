@@ -20,6 +20,8 @@ export async function POST(
         const { sectionIndex, narasiText, timestamp, voiceId } = body
 
         // Debug: Log what we received
+        console.log('API /generate-section-audio received body:', body)
+        console.log('Extracted voiceId:', voiceId)
 
         if (typeof sectionIndex !== 'number' || !narasiText || !timestamp) {
             return NextResponse.json(
@@ -80,17 +82,21 @@ export async function POST(
         // Create a mini-script with just this section for TTS processing
         const sectionScript = `${timestamp}\nNARASI: ${narasiText}`
 
+        // Prepare webhook payload
+        const webhookPayload = {
+            scriptId: script.id,
+            script: sectionScript,
+            callbackUrl,
+            voiceId: voiceId || 'alloy',  // Pass voice to n8n, default to 'alloy'
+        }
+
         // Debug: Log what we're sending to n8n
+        console.log('Sending to TTS webhook:', JSON.stringify(webhookPayload, null, 2))
 
         fetch(ttsWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                scriptId: script.id,
-                script: sectionScript,
-                callbackUrl,
-                voiceId: voiceId || 'alloy',  // Pass voice to n8n, default to 'alloy'
-            }),
+            body: JSON.stringify(webhookPayload),
         }).catch(err => console.error('TTS webhook error:', err))
 
         return NextResponse.json({

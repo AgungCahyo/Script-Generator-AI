@@ -70,6 +70,7 @@ export default function ScriptSectionCard({
         }
 
         try {
+            console.log(`Generating audio for section ${section.index}, voice:`, selectedVoice)
             // Call API to generate TTS for this specific section
             const res = await fetch(`/api/scripts/${scriptId}/generate-section-audio`, {
                 method: 'POST',

@@ -26,8 +26,6 @@ export interface ScriptModalProps {
     script: Script | null
     isOpen: boolean
     onClose: () => void
-    onGenerateAudio: (selectedVoice?: string) => void
-    generatingAudio: boolean
     onScriptUpdated: (script: Script) => void
     onRetry?: (scriptId: string) => void
     authToken?: string

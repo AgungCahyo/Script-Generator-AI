@@ -26,7 +26,6 @@ export default function Home() {
   const [polling, setPolling] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalScript, setModalScript] = useState<Script | null>(null)
-  const [generatingAudio, setGeneratingAudio] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
   const [authToken, setAuthToken] = useState<string | undefined>(undefined)
   const [insufficientCreditsModalOpen, setInsufficientCreditsModalOpen] = useState(false)
@@ -310,51 +309,6 @@ export default function Home() {
     fetchScripts()
   }
 
-  const handleGenerateAudio = async (selectedVoice?: string) => {
-    if (!modalScript) return
-    setGeneratingAudio(true)
-
-    try {
-      const token = await getIdToken()
-      const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ voiceId: selectedVoice || 'alloy' })
-      })
-      const data = await res.json()
-
-      if (!res.ok || !data.success) {
-        showError(data.error || 'Failed to start audio generation')
-        setGeneratingAudio(false)
-        return
-      }
-
-      const pollAudio = setInterval(async () => {
-        const scriptRes = await fetch(`/api/scripts/${modalScript.id}`, {
-          headers: { Authorization: `Bearer ${await getIdToken()}` }
-        })
-        const scriptData = await scriptRes.json()
-        if (scriptData.script?.audioUrl) {
-          clearInterval(pollAudio)
-          setGeneratingAudio(false)
-          setModalScript(scriptData.script)
-          fetchScripts()
-        }
-      }, 3000)
-
-      setTimeout(() => {
-        clearInterval(pollAudio)
-        setGeneratingAudio(false)
-      }, 120000)
-    } catch (error) {
-      showError('Network error. Please check your connection and try again')
-      setGeneratingAudio(false)
-    }
-  }
-
   const handleRetry = async (scriptId: string) => {
     const scriptToRetry = scripts.find(s => s.id === scriptId)
     if (!scriptToRetry) return
@@ -492,8 +446,6 @@ export default function Home() {
         script={modalScript}
         isOpen={modalOpen}
         onClose={closeModal}
-        onGenerateAudio={handleGenerateAudio}
-        generatingAudio={generatingAudio}
         onScriptUpdated={handleScriptUpdated}
         onRetry={handleRetry}
         authToken={authToken}
