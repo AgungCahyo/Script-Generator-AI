@@ -17,13 +17,13 @@ import { DropdownOption } from '@/lib/constants/models'
 const VIDEO_DURATION_OPTIONS = [4, 5, 6, 7, 8]
 
 const IMAGE_SOURCE_OPTIONS: DropdownOption[] = [
-    { value: 'pexels', label: 'Pexels', description: 'Unlimited free images' },
-    { value: 'pixabay', label: 'Pixabay', description: '5,000 requests/day' }
+    { value: 'pexels', label: 'Popular', description: 'Trending & widely-used' },
+    { value: 'pixabay', label: 'Unique', description: 'Distinctive & creative' }
 ]
 
 const VIDEO_SOURCE_OPTIONS: DropdownOption[] = [
-    { value: 'pexels', label: 'Pexels', description: 'Free HD videos' },
-    { value: 'pixabay', label: 'Pixabay', description: 'Free stock videos' }
+    { value: 'pexels', label: 'Popular', description: 'High-quality footage' },
+    { value: 'pixabay', label: 'Unique', description: 'Exclusive selections' }
 ]
 
 interface MediaToolbarProps {

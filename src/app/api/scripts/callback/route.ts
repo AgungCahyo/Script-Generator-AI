@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { extractKeywords } from '@/lib/utils/keywords'
 
 // POST: Receive callback from n8n
 export async function POST(request: NextRequest) {
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest) {
 
         if (script !== undefined) {
             updateData.script = script
+            // Extract and save keywords for media search
+            updateData.keywords = extractKeywords(script)
         }
 
         // Support audioFiles array (new format) - MERGE with existing audio files

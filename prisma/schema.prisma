@@ -33,6 +33,7 @@ model Script {
   id            String    @id @default(cuid())
   topic         String
   script        String?   @db.Text
+  keywords      String?   // Extracted keywords for media search
   audioUrl      String?   // Legacy: single audio URL
   audioFiles    Json?     // New: array of {blockIndex, timestamp, text, audioUrl, fileName}
   imageUrls     Json?     // Array of Pexels image objects from GDrive

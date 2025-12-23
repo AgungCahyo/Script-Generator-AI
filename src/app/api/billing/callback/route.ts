@@ -102,19 +102,36 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Add credits (no bonus - flat pricing)
+        // Check if this is user's first purchase (first-time buyer bonus)
+        const previousPurchases = await prisma.creditTransaction.findMany({
+            where: {
+                userId,
+                type: 'PURCHASE',
+            },
+        })
+
+        const isFirstPurchase = previousPurchases.length === 0
+        const bonusCredits = isFirstPurchase ? Math.floor(credits * 0.2) : 0 // 20% bonus
+        const totalCredits = credits + bonusCredits
+
+        // Add credits with bonus if applicable
         await addCredits(
             userId,
-            credits,
+            totalCredits,
             'PURCHASE',
-            `Purchased ${credits} credits`,
-            { orderId, transactionId, packageSize }
+            isFirstPurchase
+                ? `Purchased ${credits} credits + ${bonusCredits} first-time bonus`
+                : `Purchased ${credits} credits`,
+            { orderId, transactionId, packageSize, bonusCredits, isFirstPurchase }
         )
 
         return NextResponse.json({
             success: true,
             type: 'credits',
-            creditsGranted: credits,
+            creditsGranted: totalCredits,
+            baseCredits: credits,
+            bonusCredits: bonusCredits,
+            isFirstPurchase,
         })
     } catch (error) {
         console.error('Error processing payment callback:', error)

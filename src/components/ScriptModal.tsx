@@ -21,7 +21,8 @@ import {
 // Import modular utilities and hooks
 import { useScriptTyping, useScriptModal, useScriptActions } from './ScriptModal/hooks'
 import { ReviewWarning, ScriptSectionCard } from './ScriptModal/components'
-import { formatDate, extractKeywords, parseScriptSections, hasScriptSections, type Script, type ScriptModalProps, type ScriptSection } from './ScriptModal/utils'
+import { formatDate, parseScriptSections, hasScriptSections, type Script, type ScriptModalProps, type ScriptSection } from './ScriptModal/utils'
+import { extractKeywords } from '@/lib/utils/keywords'
 import { OPENAI_TTS_VOICES, DEFAULT_VOICE } from '@/lib/constants/voice-options'
 import VoiceSelector from './VoiceSelector'
 
@@ -40,7 +41,6 @@ export default function ScriptModal({
 
     // Voice selector state
     const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE)
-    const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null)
 
     // Use custom hooks for modular state management
     const { displayedScript, skipTyping, isTyping, scriptContentRef } = useScriptTyping(script, authToken, onScriptUpdated)
@@ -241,32 +241,6 @@ export default function ScriptModal({
         )
     }
 
-    // Handle voice preview
-    const handleVoicePreview = (voiceId: string) => {
-        // Stop any currently playing preview
-        if (previewAudio) {
-            previewAudio.pause()
-            previewAudio.currentTime = 0
-        }
-
-        // Use pre-recorded sample from public folder
-        const previewUrl = `/voice-samples/${voiceId}.mp3`
-
-        // Create and play audio
-        const audio = new Audio(previewUrl)
-        setPreviewAudio(audio)
-
-        audio.play().catch(err => {
-            console.error('Error playing preview:', err)
-            showError('Gagal preview voice. Coba lagi ya!')
-        })
-
-        // Clean up when preview ends
-        audio.onended = () => {
-            setPreviewAudio(null)
-        }
-    }
-
     // Extract media for gallery
     const mediaItems = (script.imageUrls || []) as (PexelsImage & { type?: string; driveFileId?: string })[]
     const images = mediaItems.filter((item) => item.type !== 'video')
@@ -390,7 +364,7 @@ export default function ScriptModal({
                                     onGenerateVideo={handleGenerateVideoClick}
                                     fetchingImages={fetchingImages}
                                     generatingVideo={generatingVideo}
-                                    extractedKeywords={extractKeywords(script.script)}
+                                    extractedKeywords={(script as any).keywords || extractKeywords(script.script)}
                                 />
                             </>
                         )}
@@ -424,12 +398,13 @@ export default function ScriptModal({
                                         }
                                     </p>
 
-                                    {extractKeywords(script.script || '') && (
+
+                                    {((script as any).keywords || extractKeywords(script.script || '')) && (
                                         <div className="flex flex-wrap gap-1.5">
-                                            {extractKeywords(script.script || '')
+                                            {((script as any).keywords || extractKeywords(script.script || ''))
                                                 .split(',')
                                                 .slice(0, 8)  // Limit to first 8 keywords
-                                                .map((keyword, idx) => (
+                                                .map((keyword: string, idx: number) => (
                                                     <span
                                                         key={idx}
                                                         className="inline-block px-2 py-0.5 text-[10px] bg-neutral-100 text-neutral-600 rounded-full whitespace-nowrap"
@@ -453,7 +428,6 @@ export default function ScriptModal({
                                                         onChange={setSelectedVoice}
                                                         options={OPENAI_TTS_VOICES}
                                                         disabled={false}
-                                                        onPreview={handleVoicePreview}
                                                     />
                                                 </div>
                                             </div>

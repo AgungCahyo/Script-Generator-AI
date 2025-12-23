@@ -6,12 +6,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import { CheckmarkCircleOutline, ArrowBack, StarOutline } from 'react-ionicons'
 import Link from 'next/link'
 
-// Credit pack options with Rp 2,000 per credit
+// Credit pack options - Rp 2,500 per credit base
 const CREDIT_PACKS = [
-    { credits: 10, price: 20000, label: 'Starter', popular: false },
-    { credits: 50, price: 100000, label: 'Popular', popular: true },
-    { credits: 100, price: 200000, label: 'Pro', popular: false },
-    { credits: 500, price: 1000000, label: 'Agency', popular: false },
+    { credits: 10, price: 25000, originalPrice: 35000, bonusCredits: 2, label: 'Starter', popular: false },
+    { credits: 50, price: 125000, originalPrice: 160000, bonusCredits: 10, label: 'Popular', popular: true },
+    { credits: 100, price: 250000, originalPrice: 320000, bonusCredits: 20, label: 'Pro', popular: false },
+    { credits: 500, price: 1250000, originalPrice: 1600000, bonusCredits: 100, label: 'Agency', popular: false },
 ]
 
 export default function PricingPage() {
@@ -19,10 +19,15 @@ export default function PricingPage() {
     const { user } = useAuth()
     const [loading, setLoading] = useState<number | null>(null)
     const [credits, setCredits] = useState(0)
+    const [hasEverPurchased, setHasEverPurchased] = useState(false)
+    const [checkingHistory, setCheckingHistory] = useState(true)
 
     useEffect(() => {
         if (user) {
             fetchCreditBalance()
+            checkPurchaseHistory()
+        } else {
+            setCheckingHistory(false)
         }
     }, [user])
 
@@ -38,6 +43,30 @@ export default function PricingPage() {
             setCredits(data.credits || 0)
         } catch (error) {
             console.error('Failed to fetch credits:', error)
+        }
+    }
+
+    const checkPurchaseHistory = async () => {
+        if (!user) return
+
+        try {
+            const token = await user.getIdToken()
+            const response = await fetch('/api/credits/history', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            const data = await response.json()
+
+            // Check if user has any PURCHASE transactions
+            const hasPurchases = data.transactions?.some(
+                (t: any) => t.type === 'PURCHASE'
+            ) || false
+
+            setHasEverPurchased(hasPurchases)
+        } catch (error) {
+            console.error('Failed to fetch purchase history:', error)
+            setHasEverPurchased(false)
+        } finally {
+            setCheckingHistory(false)
         }
     }
 
@@ -110,7 +139,11 @@ export default function PricingPage() {
                         Beli Kredit
                     </h2>
                     <p className="text-neutral-600 text-lg max-w-2xl mx-auto">
-                        Pilih paket kredit yang sesuai kebutuhan kamu. Harga tetap di <strong>Rp 2.000 per credit</strong>.
+                        {(!user || !hasEverPurchased) ? (
+                            <><strong className="text-green-600">Bonus 20% Credits</strong> untuk pembelian pertama kamu!</>
+                        ) : (
+                            <>Pilih paket kredit yang sesuai kebutuhan kamu.</>
+                        )}
                     </p>
                 </div>
 
@@ -120,8 +153,8 @@ export default function PricingPage() {
                         <div
                             key={pack.credits}
                             className={`bg-white rounded-xl p-6 ${pack.popular
-                                    ? 'border-2 border-neutral-900 shadow-lg relative'
-                                    : 'border border-neutral-200'
+                                ? 'border-2 border-neutral-900 shadow-lg relative'
+                                : 'border border-neutral-200'
                                 }`}
                         >
                             {pack.popular && (
@@ -144,26 +177,41 @@ export default function PricingPage() {
                                     <span className="text-4xl font-bold text-neutral-900">{pack.credits}</span>
                                     <span className="text-neutral-500 text-sm">credits</span>
                                 </div>
-                                <div className="text-neutral-600 text-base font-medium">
-                                    {formatIDR(pack.price)}
-                                </div>
-                                <div className="text-xs text-neutral-400 mt-1">
-                                    Rp 2.000 / credit
+                                <div className="space-y-1">
+                                    {/* Show original price with strikethrough */}
+                                    <div className="text-sm text-neutral-400 line-through">
+                                        {formatIDR(pack.originalPrice)}
+                                    </div>
+                                    <div className="text-neutral-900 text-xl font-bold">
+                                        {formatIDR(pack.price)}
+                                    </div>
+                                    {/* Show bonus for first-time buyers */}
+                                    {(!user || !hasEverPurchased) && pack.bonusCredits && (
+                                        <div className="mt-2 pt-2 border-t border-neutral-100">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs font-semibold text-green-600">+{pack.bonusCredits} bonus credits</span>
+                                                <span className="text-xs text-neutral-400">(first purchase)</span>
+                                            </div>
+                                            <div className="text-xs text-neutral-500 mt-0.5">
+                                                Total: <strong>{pack.credits + pack.bonusCredits} credits</strong>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             <ul className="space-y-2 mb-6 text-sm">
                                 <li className="flex items-center gap-2 text-neutral-700">
                                     <CheckmarkCircleOutline color="#22c55e" width="16px" height="16px" />
-                                    Generate {Math.floor(pack.credits / 50)} script (50 credits)
+                                    ~{Math.floor(pack.credits / 6)} script pendek
                                 </li>
                                 <li className="flex items-center gap-2 text-neutral-700">
                                     <CheckmarkCircleOutline color="#22c55e" width="16px" height="16px" />
-                                    TTS narasi {Math.floor(pack.credits / 3)} section (3 credits)
+                                    ~{Math.floor(pack.credits / 3)} TTS sections
                                 </li>
                                 <li className="flex items-center gap-2 text-neutral-700">
                                     <CheckmarkCircleOutline color="#22c55e" width="16px" height="16px" />
-                                    Search media {Math.floor(pack.credits / 2)} kali (2 credits)
+                                    ~{pack.credits * 5} images atau ~{Math.floor(pack.credits / 2)} videos
                                 </li>
                             </ul>
 
@@ -171,8 +219,8 @@ export default function PricingPage() {
                                 onClick={() => handleBuyCredits(pack.credits)}
                                 disabled={loading === pack.credits || !user}
                                 className={`w-full py-2.5 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${pack.popular
-                                        ? 'bg-neutral-900 text-white hover:bg-neutral-800'
-                                        : 'border border-neutral-300 text-neutral-900 hover:bg-neutral-50'
+                                    ? 'bg-neutral-900 text-white hover:bg-neutral-800'
+                                    : 'border border-neutral-300 text-neutral-900 hover:bg-neutral-50'
                                     }`}
                             >
                                 {loading === pack.credits ? 'Tunggu sebentar...' : 'Beli Sekarang'}
@@ -193,7 +241,7 @@ export default function PricingPage() {
                     <div className="grid sm:grid-cols-3 gap-6 text-sm">
                         <div>
                             <div className="font-semibold text-neutral-900 mb-2">Generate Script</div>
-                            <div className="text-neutral-600">50 credits per script (30-120 detik)</div>
+                            <div className="text-neutral-600">6-7 credits per script pendek (30-120 detik)</div>
                         </div>
                         <div>
                             <div className="font-semibold text-neutral-900 mb-2">Text-to-Speech</div>
@@ -201,7 +249,7 @@ export default function PricingPage() {
                         </div>
                         <div>
                             <div className="font-semibold text-neutral-900 mb-2">Search Media</div>
-                            <div className="text-neutral-600">2 credits per pencarian gambar/video</div>
+                            <div className="text-neutral-600">1 credit per 5 gambar • 2 credits per video</div>
                         </div>
                     </div>
                 </div>

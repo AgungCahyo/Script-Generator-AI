@@ -19,7 +19,7 @@ export const CREDIT_COSTS = {
 export const PLAN_LIMITS = {
     FREE: {
         creditsPerMonth: 0,
-        startingCredits: 10, // One-time starting credits
+        startingCredits: 25, // Generous starting credits for better onboarding
         rolloverLimit: 0,
         discountPercent: 0,
     },

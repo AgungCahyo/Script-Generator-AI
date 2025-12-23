@@ -77,11 +77,6 @@ export default function VoiceSelector({
         setTimeout(() => {
             setPlayingVoice(null)
         }, 5000)
-
-        // Legacy callback for backward compatibility
-        if (onPreview) {
-            onPreview(voiceId)
-        }
     }
 
     return (
@@ -139,11 +134,10 @@ export default function VoiceSelector({
                             <button
                                 type="button"
                                 onClick={(e) => handlePreview(e, option.value)}
-                                disabled={!onPreview}
                                 className={`p-1.5 rounded transition-colors shrink-0 ${playingVoice === option.value
                                     ? 'bg-neutral-900 text-white'
                                     : 'hover:bg-neutral-200 text-neutral-600'
-                                    } ${!onPreview ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                    }`}
                                 title="Preview voice"
                             >
                                 <VolumeHighOutline
