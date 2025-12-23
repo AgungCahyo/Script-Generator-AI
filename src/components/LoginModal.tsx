@@ -29,7 +29,6 @@ function getAuthErrorMessage(error: unknown): string {
         return errorMessages[firebaseError.code]
     }
 
-    console.error('Auth error:', error)
     return 'Terjadi kesalahan. Silakan coba lagi.'
 }
 

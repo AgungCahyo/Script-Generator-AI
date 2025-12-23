@@ -1,230 +1,164 @@
-# 🎬 AutoScript Generator
+# AutoScript - AI Script Generator
 
-Web application for generating creative scripts using Google's latest Gemini AI models with real-time streaming, Firebase authentication, and automated audio generation.
+Tool untuk bikin script video otomatis pakai AI. Tinggal input topik, langsung jadi script siap pakai lengkap dengan audio narasi.
 
-**Live Demo**: [https://web-trigger.vercel.app](https://web-trigger.vercel.app)
+**Live**: [script-generator-ai.vercel.app](https://script-generator-ai.vercel.app)
 
-## ✨ Features
+## Fitur Utama
 
-- 🤖 **Latest AI Models** - Support for Google's newest Gemini models (3 Pro, 3 Flash, 2.5 Pro, 2.5 Flash, and more)
-- ⚡ **Real-time Streaming** - Stream AI responses in real-time for better user experience
-- 🔐 **Firebase Authentication** - Secure Google OAuth and Email/Password authentication
-- 📝 **Script History** - View and manage all your generated scripts
-- 🎙️ **Audio Generation** - Automatic text-to-speech conversion via n8n webhooks
-- 🎨 **Modern UI** - Clean, responsive interface with dark mode support
-- 🔄 **Auto-save** - Scripts automatically saved to database
-- 👤 **User Isolation** - Each user's data is completely isolated
+- Generate script video panjang (30-120 detik) otomatis
+- Text-to-speech buat narasi (OpenAI TTS)
+- Search gambar dan video dari Pexels/Pixabay
+- Edit script per section dengan character limit
+- History semua script yang udah dibuat
+- Login pakai Google atau email
 
-## 🛠️ Tech Stack
+## Cara Pakai
 
-- **Framework**: [Next.js 16](https://nextjs.org/) with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS 4
-- **AI**: Google Gemini API (@google/generative-ai)
-- **Authentication**: Firebase Auth (Client + Admin SDK)
-- **Database**: PostgreSQL with Prisma ORM
-- **Automation**: n8n webhooks for audio generation
-- **Deployment**: Vercel
-- **UI Components**: React Ionicons
+1. Login pakai Google atau bikin akun
+2. Beli credit di halaman Pricing (mulai dari Rp 20K)
+3. Input topik video yang mau dibuat
+4. Script langsung ke-generate dan bisa langsung di-edit
+5. Generate audio TTS per section kalau mau
+6. Search gambar/video yang cocok
+7. Done! Script siap dipake untuk bikin video
 
-## 📋 Prerequisites
+## Kredit System
 
-- Node.js 20+ 
-- PostgreSQL database
-- Firebase project
-- Google Gemini API key
-- n8n instance (optional, for audio generation)
+Harga flat **Rp 2.000 per credit**:
+- Generate script: 50 credits
+- TTS per section: 3 credits
+- Search media: 2 credits
 
-## 🚀 Getting Started
+Paket tersedia: 10, 50, 100, 500 credits
 
-### 1. Clone the repository
+## Tech Stack
+
+**Frontend**
+- Next.js 16 (App Router)
+- TypeScript
+- Tailwind CSS 4
+- React Ionicons
+
+**Backend**
+- PostgreSQL + Prisma
+- Firebase Auth
+- Google Gemini AI
+- OpenAI TTS
+- n8n automation
+
+**Deployment**
+- Vercel (frontend)
+- Railway (database)
+
+## Setup Development
 
 ```bash
-git clone <your-repo-url>
-cd web-trigger
-```
-
-### 2. Install dependencies
-
-```bash
+# Install dependencies
 npm install
-```
 
-### 3. Set up environment variables
-
-Create a `.env` file in the root directory:
-
-```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/dbname"
-
-# Firebase Client SDK
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-
-# Firebase Admin SDK
-FIREBASE_ADMIN_PROJECT_ID=your_project_id
-FIREBASE_ADMIN_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your_project.iam.gserviceaccount.com
-FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-# n8n Webhooks (optional)
-N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/...
-N8N_TTS_WEBHOOK_URL=https://your-n8n-instance.com/webhook/tts/...
-
-# Google Gemini API
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-### 4. Set up the database
-
-```bash
-# Generate Prisma client
+# Setup database
 npx prisma generate
-
-# Run database migrations
 npx prisma db push
 
-# (Optional) Open Prisma Studio to view data
-npx prisma studio
-```
-
-### 5. Run development server
-
-```bash
+# Run dev server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see the application.
+### Environment Variables
 
-## 📦 Project Structure
-
-```
-web-trigger/
-├── prisma/
-│   └── schema.prisma          # Database schema
-├── src/
-│   ├── app/
-│   │   ├── api/              # API routes
-│   │   │   └── scripts/      # Script generation endpoints
-│   │   ├── auth/             # Authentication pages
-│   │   └── page.tsx          # Main page
-│   ├── components/           # React components
-│   │   ├── ScriptForm.tsx    # Main form component
-│   │   ├── ScriptResult.tsx  # Result display
-│   │   ├── HistoryList.tsx   # Script history
-│   │   ├── LoginForm.tsx     # Authentication UI
-│   │   └── CustomDropdown.tsx # Model selector
-│   ├── lib/
-│   │   ├── api/              # API utilities
-│   │   ├── constants/        # Model definitions & constants
-│   │   ├── prompts/          # AI prompt templates & builders
-│   │   ├── types/            # TypeScript types
-│   │   └── firebase/         # Firebase configuration
-│   └── styles/               # Global styles
-└── public/                   # Static assets
-```
-
-## 🎨 Available AI Models
-
-The application supports the latest Google Gemini models:
-
-### Gemini 3 Series (Preview)
-- **Gemini 3 Pro** - Most powerful for reasoning & agentic workflows
-- **Gemini 3 Flash** (Default) - Fastest & most intelligent with superior search
-
-### Gemini 2.5 Series (Stable)
-- **Gemini 2.5 Pro** - State-of-the-art thinking model for complex problems
-- **Gemini 2.5 Flash** - Best price-performance ratio
-- **Gemini 2.5 Flash-Lite** - Optimized for cost-efficiency & high throughput
-
-### Gemini 1.5 Series (Legacy)
-- **Gemini 1.5 Pro** - Stable model for various tasks
-- **Gemini 1.5 Flash** - Stable & fast for general tasks
-
-## 🔧 Available Scripts
-
-```bash
-# Development
-npm run dev          # Start development server
-
-# Production
-npm run build        # Build for production
-npm run start        # Start production server
-
-# Linting
-npm run lint         # Run ESLint
-
+```env
 # Database
-npx prisma studio    # Open Prisma Studio
-npx prisma generate  # Generate Prisma Client
-npx prisma db push   # Push schema to database
+DATABASE_URL="postgresql://..."
+
+# Firebase (client)
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+
+# Firebase (admin)
+FIREBASE_ADMIN_PROJECT_ID=
+FIREBASE_ADMIN_CLIENT_EMAIL=
+FIREBASE_ADMIN_PRIVATE_KEY=
+
+# APIs
+GEMINI_API_KEY=
+NEXT_PUBLIC_APP_URL=
+
+# n8n Webhooks
+N8N_WEBHOOK_URL=
+N8N_TTS_WEBHOOK_URL=
+N8N_PAYMENT_WEBHOOK_URL=
+
+# Midtrans Payment
+MIDTRANS_SERVER_KEY=
+MIDTRANS_CLIENT_KEY=
 ```
 
-## 🚢 Deployment
+## Database Schema
 
-### Deploy to Vercel
+**User**
+- Credits balance
+- Purchase history
+- Scripts
 
-1. Install Vercel CLI:
-```bash
-npm i -g vercel
-```
+**Script**
+- Topic & generated script
+- Audio files (per section)
+- Media gallery (images/videos)
+- Status (pending/processing/completed/failed)
 
-2. Deploy to production:
+**CreditTransaction**
+- Transaction history
+- Type (PURCHASE/USAGE/BONUS/REFUND)
+
+## API Endpoints
+
+**Scripts**
+- `POST /api/scripts/generate` - Generate script
+- `GET /api/scripts` - Get user history
+- `PATCH /api/scripts/[id]` - Update script
+- `POST /api/scripts/[id]/generate-section-audio` - TTS generation
+
+**Credits**
+- `GET /api/credits/balance` - Get balance
+- `GET /api/credits/history` - Transaction history
+
+**Billing**
+- `POST /api/billing/create-checkout` - Create payment
+- `POST /api/billing/callback` - Payment callback
+
+**Media**
+- `POST /api/images/search` - Search images (Pexels/Pixabay)
+- `POST /api/videos/search` - Search videos (Pexels/Pixabay)
+- `POST /api/media/delete` - Delete from gallery
+
+## Deployment
+
+Production di-deploy otomatis ke Vercel:
+
 ```bash
 vercel --prod
 ```
 
-3. Set environment variables in Vercel dashboard
+Jangan lupa set semua environment variables di Vercel dashboard.
 
-### Environment Variables
+## Credit Costs
 
-Make sure to set all required environment variables in your Vercel project settings.
+Operational cost per fitur:
+- **Script generation**: ~Rp 500 (Gemini API)
+- **TTS (1000 chars)**: ~Rp 235 (OpenAI TTS)
+- **Media search**: Rp 100 (Firebase storage)
 
-## 📝 API Endpoints
+Dengan pricing Rp 2K/credit, margin profit 90-98%.
 
-- `POST /api/scripts/generate` - Generate script with streaming
-- `GET /api/scripts` - Get user's script history
-- `GET /api/scripts/[id]` - Get specific script
-- `POST /api/scripts/[id]/generate-audio` - Generate audio for script
-- `POST /api/scripts/trigger` - Trigger n8n webhook
+## Support
 
-## 🔒 Authentication
-
-The app uses Firebase Authentication with support for:
-- Google OAuth
-- Email/Password
-
-All API routes are protected and require authentication. Guest mode is available with limited functionality.
-
-## 🗄️ Database Schema
-
-The application uses Prisma with PostgreSQL. Main models:
-
-- **Script** - Stores generated scripts with metadata
-- **User** - User profiles and preferences
-
-See `prisma/schema.prisma` for the complete schema.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is private and proprietary.
-
-## 🐛 Known Issues
-
-- None currently reported
-
-## 📞 Support
-
-For support, please contact the project maintainer.
+Hubungin maintainer kalau ada masalah.
 
 ---
 
-**Built with ❤️ using Next.js and Google Gemini AI**
+Built with Next.js + Gemini AI + OpenAI TTS

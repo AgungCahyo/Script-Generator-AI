@@ -9,4 +9,9 @@ export interface ScriptFormData {
     language: string
     hookStyle: string
     additionalNotes: string
+    // Narration customization
+    voiceTone: string
+    pacing: string
+    vocabularyLevel: string
 }
+

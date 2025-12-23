@@ -11,25 +11,61 @@ datasource db {
 }
 
 model User {
-  id        String   @id // Firebase UID
-  email     String   @unique
-  name      String?
-  scripts   Script[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String              @id // Firebase UID
+  email              String              @unique
+  name               String?
+  scripts            Script[]
+  
+  // Payment & Credits
+  midtransCustomerId String?             @unique
+  credits            Int                 @default(10) // Starting credits for new users
+  creditsPurchased   Int                 @default(0)
+  creditsUsed        Int                 @default(0)
+  
+  // Relations
+  creditTransactions CreditTransaction[]
+  
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model Script {
-  id        String   @id @default(cuid())
-  topic     String
-  script    String?  @db.Text
-  audioUrl  String?
-  status    String   @default("pending") // pending, processing, completed, failed
-  error     String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(cuid())
+  topic         String
+  script        String?   @db.Text
+  audioUrl      String?   // Legacy: single audio URL
+  audioFiles    Json?     // New: array of {blockIndex, timestamp, text, audioUrl, fileName}
+  imageUrls     Json?     // Array of Pexels image objects from GDrive
+  status        String    @default("pending") // pending, processing, completed, failed
+  error         String?
+  firstViewedAt DateTime? // First time user viewed script with typing animation
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@index([userId])
+}
+
+model CreditTransaction {
+  id           String                @id @default(cuid())
+  userId       String
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  amount       Int                   // Positive for grants, negative for usage
+  type         CreditTransactionType
+  description  String
+  balanceAfter Int
+  metadata     Json?                 // Extra info like scriptId, orderId, etc.
+  
+  createdAt    DateTime              @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+enum CreditTransactionType {
+  PURCHASE      // User bought credits
+  USAGE         // Credits used for features
+  REFUND        // Refunded credits
+  BONUS         // Bonus credits (referral, promo, etc)
 }

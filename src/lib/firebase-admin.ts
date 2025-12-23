@@ -1,8 +1,10 @@
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app'
 import { getAuth, Auth } from 'firebase-admin/auth'
+import { getStorage, Storage } from 'firebase-admin/storage'
 
 let adminApp: App | null = null
 let adminAuth: Auth | null = null
+let adminStorage: Storage | null = null
 
 function getAdminApp(): App {
     if (!adminApp) {
@@ -17,6 +19,7 @@ function getAdminApp(): App {
                     clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
                     privateKey: privateKey,
                 }),
+                storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
             }, 'admin')
         } else {
             adminApp = getApps()[0]
@@ -32,6 +35,13 @@ function getAdminAuth(): Auth {
     return adminAuth
 }
 
+function getAdminStorage(): Storage {
+    if (!adminStorage) {
+        adminStorage = getStorage(getAdminApp())
+    }
+    return adminStorage
+}
+
 export async function verifyToken(token: string) {
     try {
         const auth = getAdminAuth()
@@ -43,4 +53,4 @@ export async function verifyToken(token: string) {
     }
 }
 
-export { getAdminAuth as adminAuth }
+export { getAdminAuth as adminAuth, getAdminStorage as adminStorage }

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { Reload, ChevronDownOutline, ChevronUpOutline } from 'react-ionicons'
+import { useState, useMemo } from 'react'
+import { Reload, ChevronDownOutline, ChevronUpOutline, Mic } from 'react-ionicons'
 import CustomDropdown from './CustomDropdown'
+import { useConfirm } from './Confirm'
 import { ScriptFormData } from '@/lib/types/form'
 import {
     MODEL_OPTIONS,
@@ -22,6 +23,15 @@ import {
     DEFAULT_LANGUAGE,
     DEFAULT_HOOK_STYLE
 } from '@/lib/constants/script-options'
+import {
+    VOICE_TONE_OPTIONS,
+    PACING_OPTIONS,
+    VOCABULARY_OPTIONS,
+    DEFAULT_VOICE_TONE,
+    DEFAULT_PACING,
+    DEFAULT_VOCABULARY
+} from '@/lib/constants/narration-options'
+import { calculateScriptCost } from '@/lib/credits'
 
 interface ScriptFormProps {
     onSubmit: (data: ScriptFormData) => Promise<void>
@@ -30,6 +40,7 @@ interface ScriptFormProps {
 }
 
 export default function ScriptForm({ onSubmit, loading, disabled = false }: ScriptFormProps) {
+    const { confirm } = useConfirm()
     const [topic, setTopic] = useState('')
     const [model, setModel] = useState(DEFAULT_MODEL)
     const [duration, setDuration] = useState(DEFAULT_DURATION)
@@ -41,10 +52,28 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
     const [hookStyle, setHookStyle] = useState(DEFAULT_HOOK_STYLE)
     const [additionalNotes, setAdditionalNotes] = useState('')
     const [showOptions, setShowOptions] = useState(false)
+    // Narration customization
+    const [voiceTone, setVoiceTone] = useState(DEFAULT_VOICE_TONE)
+    const [pacing, setPacing] = useState(DEFAULT_PACING)
+    const [vocabularyLevel, setVocabularyLevel] = useState(DEFAULT_VOCABULARY)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!topic.trim() || loading || disabled) return
+
+        // Calculate credits
+        const credits = calculateScriptCost(parseInt(duration))
+
+        // Show confirmation
+        const confirmed = await confirm({
+            title: 'Generate Script',
+            message: `Bakal pakai ${credits} kredit buat generate script ${duration} menit nih. Lanjut?`,
+            confirmText: 'Ya, Generate',
+            cancelText: 'Batal'
+        })
+
+        if (!confirmed) return
+
         await onSubmit({
             topic: topic.trim(),
             model,
@@ -56,6 +85,9 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
             language,
             hookStyle,
             additionalNotes: additionalNotes.trim(),
+            voiceTone,
+            pacing,
+            vocabularyLevel,
         })
         setTopic('')
         setAdditionalNotes('')
@@ -63,7 +95,13 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
 
     const isDisabled = loading || disabled
 
-    const inputClasses = `w-full h-10 px-3 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-shadow ${isDisabled ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white'}`
+    // Calculate credit cost based on duration
+    const creditCost = useMemo(() => {
+        const durationValue = typeof duration === 'string' ? parseInt(duration) : duration
+        return calculateScriptCost(durationValue)
+    }, [duration])
+
+    const inputClasses = `w-full h-10 px-3 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-500 transition-shadow ${isDisabled ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white'}`
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,7 +120,7 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
                     <button
                         type="submit"
                         disabled={isDisabled || !topic.trim()}
-                        className="h-10 px-4 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
+                        className="h-10 px-4 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
                         {loading ? (
                             <span className="flex items-center gap-2">
@@ -90,7 +128,10 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
                                 Generating
                             </span>
                         ) : (
-                            'Generate'
+                            <>
+                                <span>Generate</span>
+                                <span className="text-[10px] opacity-75">({creditCost} credits)</span>
+                            </>
                         )}
                     </button>
                 </div>
@@ -177,7 +218,42 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
                         disabled={isDisabled}
                     />
 
-                    {/* Row 5: Target Audience */}
+                    {/* Narration Style Section */}
+                    <div className="pt-3 border-t border-neutral-200">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Mic color="currentColor" width="16px" height="16px" />
+                            <h3 className="text-xs font-semibold text-neutral-700">Narration Style</h3>
+                        </div>
+
+                        {/* Row 5a: Voice Tone & Pacing */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <CustomDropdown
+                                label="Voice Tone"
+                                value={voiceTone}
+                                onChange={setVoiceTone}
+                                options={VOICE_TONE_OPTIONS}
+                                disabled={isDisabled}
+                            />
+                            <CustomDropdown
+                                label="Pacing"
+                                value={pacing}
+                                onChange={setPacing}
+                                options={PACING_OPTIONS}
+                                disabled={isDisabled}
+                            />
+                        </div>
+
+                        {/* Row 5b: Vocabulary Level */}
+                        <CustomDropdown
+                            label="Vocabulary Level"
+                            value={vocabularyLevel}
+                            onChange={setVocabularyLevel}
+                            options={VOCABULARY_OPTIONS}
+                            disabled={isDisabled}
+                        />
+                    </div>
+
+                    {/* Row 6: Target Audience */}
                     <div>
                         <label className="block text-xs font-medium text-neutral-500 mb-1.5">
                             Target Audience (opsional)
@@ -192,7 +268,7 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
                         />
                     </div>
 
-                    {/* Row 6: Additional Notes */}
+                    {/* Row 7: Additional Notes */}
                     <div>
                         <label className="block text-xs font-medium text-neutral-500 mb-1.5">
                             Catatan Tambahan (opsional)
@@ -203,7 +279,7 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
                             placeholder="Instruksi khusus, contoh: sertakan CTA untuk subscribe, hindari kata-kata tertentu, dll."
                             disabled={isDisabled}
                             rows={3}
-                            className={`w-full px-3 py-2 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent transition-shadow resize-none ${isDisabled ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white'}`}
+                            className={`${inputClasses} h-[100px]`}
                         />
                     </div>
                 </div>

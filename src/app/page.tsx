@@ -1,18 +1,24 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import ScriptForm from '@/components/ScriptForm'
-import ScriptResult from '@/components/ScriptResult'
 import HistoryList from '@/components/HistoryList'
 import ScriptModal from '@/components/ScriptModal'
 import LoginModal from '@/components/LoginModal'
-import { LogOutOutline, PersonCircleOutline, LogInOutline } from 'react-ionicons'
+import InsufficientCreditsModal from '@/components/InsufficientCreditsModal'
+import { useToast } from '@/components/Toast'
+import { useConfirm } from '@/components/Confirm'
+import { LogOutOutline, PersonCircleOutline, LogInOutline, PersonOutline, CardOutline, ChevronDownOutline } from 'react-ionicons'
+import CreditBalance from '@/components/CreditBalance'
 import { Script } from '@/lib/types/script'
 import { ScriptFormData } from '@/lib/types/form'
+import Link from 'next/link'
 
 export default function Home() {
   const { user, loading: authLoading, signOut, getIdToken } = useAuth()
+  const { showError } = useToast()
+  const { confirm } = useConfirm()
   const [loading, setLoading] = useState(false)
   const [currentScript, setCurrentScript] = useState<Script | null>(null)
   const [scripts, setScripts] = useState<Script[]>([])
@@ -22,6 +28,11 @@ export default function Home() {
   const [modalScript, setModalScript] = useState<Script | null>(null)
   const [generatingAudio, setGeneratingAudio] = useState(false)
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const [authToken, setAuthToken] = useState<string | undefined>(undefined)
+  const [insufficientCreditsModalOpen, setInsufficientCreditsModalOpen] = useState(false)
+  const [creditInfo, setCreditInfo] = useState<{ required: number; available: number }>({ required: 0, available: 0 })
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
 
   const fetchScripts = useCallback(async () => {
     if (!user) return
@@ -34,7 +45,6 @@ export default function Home() {
       const data = await res.json()
       if (data.scripts) setScripts(data.scripts)
     } catch (error) {
-      console.error('Error fetching scripts:', error)
     } finally {
       setFetchingHistory(false)
     }
@@ -59,7 +69,6 @@ export default function Home() {
         }
       }
     } catch (error) {
-      console.error('Error polling script:', error)
     }
   }, [fetchScripts, modalScript?.id, getIdToken])
 
@@ -74,6 +83,23 @@ export default function Home() {
     }
     return () => { if (interval) clearInterval(interval) }
   }, [polling, currentScript?.id, pollScriptStatus])
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false)
+      }
+    }
+
+    if (profileDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [profileDropdownOpen])
 
   const handleSubmit = async (formData: ScriptFormData) => {
     setLoading(true)
@@ -96,9 +122,19 @@ export default function Home() {
         // Try to parse error from JSON response
         try {
           const errorData = await res.json()
-          alert(errorData.error || 'Failed to start script generation')
+
+          // Handle 402 Payment Required with modal
+          if (res.status === 402) {
+            setCreditInfo({
+              required: errorData.required || 0,
+              available: errorData.available || 0
+            })
+            setInsufficientCreditsModalOpen(true)
+          } else {
+            showError(errorData.error || 'Failed to start script generation')
+          }
         } catch {
-          alert('Failed to start script generation')
+          showError('Failed to start script generation')
         }
         setLoading(false)
         return
@@ -113,19 +149,28 @@ export default function Home() {
         topic: formData.topic,
         script: '',
         audioUrl: null,
-        status: 'processing',
+        audioFiles: null,
+        imageUrls: null,
+        status: 'pending',
         error: null,
+        firstViewedAt: null,
+        userId: user?.uid || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }
       setCurrentScript(newScript)
+
+      // Auto-open modal to show typing animation
+      setModalScript(newScript)
+      setModalOpen(true)
+      setAuthToken(token || undefined)
 
       // Read stream
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
 
       if (!reader) {
-        alert('Failed to read stream')
+        showError('Failed to read stream')
         setLoading(false)
         return
       }
@@ -147,6 +192,12 @@ export default function Home() {
               ...prev,
               script: displayedText
             } : null)
+
+            // Update modal script in real-time
+            setModalScript(prev => prev ? {
+              ...prev,
+              script: displayedText
+            } : null)
           }
         }, 30) // Update every 30ms for smooth typing
       }
@@ -163,15 +214,20 @@ export default function Home() {
             if (errorMatch) {
               try {
                 const errorData = JSON.parse(errorMatch[1])
-                alert(errorData.error || 'Failed to generate script')
+                showError(errorData.error || 'Failed to generate script')
                 setCurrentScript(prev => prev ? {
+                  ...prev,
+                  status: 'failed',
+                  error: errorData.error
+                } : null)
+                setModalScript(prev => prev ? {
                   ...prev,
                   status: 'failed',
                   error: errorData.error
                 } : null)
                 hasError = true
               } catch {
-                alert('Failed to generate script')
+                showError('Failed to generate script')
               }
             }
             // Remove error marker from text
@@ -182,6 +238,7 @@ export default function Home() {
             // Make sure all text is displayed
             displayedText = accumulatedText
             setCurrentScript(prev => prev ? { ...prev, script: accumulatedText, status: 'completed' } : null)
+            setModalScript(prev => prev ? { ...prev, script: accumulatedText, status: 'completed' } : null)
           }
 
           if (updateInterval) clearInterval(updateInterval)
@@ -195,14 +252,20 @@ export default function Home() {
         accumulatedText += chunk
       }
     } catch (error) {
-      console.error('Error:', error)
-      alert('Network error. Please check your connection and try again')
+      showError('Network error. Please check your connection and try again')
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this script?')) return
+    const confirmed = await confirm({
+      title: 'Hapus Script?',
+      message: 'Script bakal dihapus permanen dan ga bisa dikembaliin lho.',
+      confirmText: 'Hapus',
+      cancelText: 'Gajadi',
+      variant: 'danger'
+    })
+    if (!confirmed) return
     try {
       const token = await getIdToken()
       await fetch(`/api/scripts/${id}`, {
@@ -216,7 +279,6 @@ export default function Home() {
         setModalScript(null)
       }
     } catch (error) {
-      console.error('Error deleting:', error)
     }
   }
 
@@ -225,14 +287,19 @@ export default function Home() {
     fetchScripts()
   }
 
-  const openModal = (script: Script) => {
+  const openModal = async (script: Script) => {
     setModalScript(script)
     setModalOpen(true)
+    if (user) {
+      const token = await getIdToken()
+      setAuthToken(token || undefined)
+    }
   }
 
   const closeModal = () => {
     setModalOpen(false)
     setModalScript(null)
+    setAuthToken(undefined)
   }
 
   const handleScriptUpdated = (updatedScript: Script) => {
@@ -256,7 +323,7 @@ export default function Home() {
       const data = await res.json()
 
       if (!res.ok || !data.success) {
-        alert(data.error || 'Failed to start audio generation')
+        showError(data.error || 'Failed to start audio generation')
         setGeneratingAudio(false)
         return
       }
@@ -279,8 +346,7 @@ export default function Home() {
         setGeneratingAudio(false)
       }, 120000)
     } catch (error) {
-      console.error('Error generating audio:', error)
-      alert('Network error. Please check your connection and try again')
+      showError('Network error. Please check your connection and try again')
       setGeneratingAudio(false)
     }
   }
@@ -300,7 +366,6 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       })
     } catch (error) {
-      console.error('Error deleting failed script:', error)
     }
 
     // Refresh scripts list
@@ -328,17 +393,55 @@ export default function Home() {
           <div className="flex items-center gap-3">
             {user ? (
               <>
-                <div className="flex items-center gap-2 text-sm text-neutral-500">
-                  <PersonCircleOutline color="#a3a3a3" width="20px" height="20px" />
-                  <span className="hidden sm:inline">{user.email}</span>
+                <CreditBalance onTopUpClick={() => window.location.href = '/pricing'} />
+
+                {/* Profile Dropdown */}
+                <div className="relative" ref={profileDropdownRef}>
+                  <button
+                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                    className="flex items-center gap-1 p-1.5 text-neutral-600 hover:bg-neutral-50 rounded-lg transition-colors"
+                    title="Account menu"
+                  >
+                    <PersonCircleOutline color="currentColor" width="24px" height="24px" />
+                    <ChevronDownOutline color="currentColor" width="14px" height="14px" cssClasses={`transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {profileDropdownOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden z-50">
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <PersonOutline color="#737373" width="16px" height="16px" />
+                          <span className="text-xs font-medium text-neutral-900">Account</span>
+                        </div>
+                        <p className="text-xs text-neutral-600 truncate">{user.email}</p>
+                      </div>
+
+                      {/* Menu Items */}
+                      <div className="py-1">
+                        <Link
+                          href="/dashboard/billing"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                          onClick={() => setProfileDropdownOpen(false)}
+                        >
+                          <CardOutline color="currentColor" width="16px" height="16px" />
+                          <span>Billing & Credits</span>
+                        </Link>
+
+                        <button
+                          onClick={() => {
+                            setProfileDropdownOpen(false)
+                            signOut()
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOutOutline color="currentColor" width="16px" height="16px" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={signOut}
-                  className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
-                  title="Sign Out"
-                >
-                  <LogOutOutline color="currentColor" width="18px" height="18px" />
-                </button>
               </>
             ) : (
               <button
@@ -362,16 +465,7 @@ export default function Home() {
           />
         </section>
 
-        {user && currentScript && (
-          <section>
-            <h2 className="text-sm text-neutral-600 mb-3">Result</h2>
-            <ScriptResult
-              script={currentScript}
-              onRefresh={handleRefresh}
-              onViewDetail={() => openModal(currentScript)}
-            />
-          </section>
-        )}
+
 
         <section>
           <h2 className="text-sm text-neutral-600 mb-3">History</h2>
@@ -398,11 +492,19 @@ export default function Home() {
         generatingAudio={generatingAudio}
         onScriptUpdated={handleScriptUpdated}
         onRetry={handleRetry}
+        authToken={authToken}
       />
 
       <LoginModal
         isOpen={loginModalOpen}
         onClose={() => setLoginModalOpen(false)}
+      />
+
+      <InsufficientCreditsModal
+        isOpen={insufficientCreditsModalOpen}
+        onClose={() => setInsufficientCreditsModalOpen(false)}
+        required={creditInfo.required}
+        available={creditInfo.available}
       />
     </main>
   )

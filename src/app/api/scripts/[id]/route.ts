@@ -71,7 +71,7 @@ export async function DELETE(
     }
 }
 
-// PATCH: Update script content
+// PATCH: Update script content or topic
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -84,11 +84,12 @@ export async function PATCH(
 
         const { id } = await params
         const body = await request.json()
-        const { script } = body
+        const { script, topic } = body
 
-        if (script === undefined) {
+        // At least one field must be provided
+        if (script === undefined && topic === undefined) {
             return NextResponse.json(
-                { error: 'Script content is required' },
+                { error: 'Script content or topic is required' },
                 { status: 400 }
             )
         }
@@ -102,12 +103,21 @@ export async function PATCH(
             return NextResponse.json({ error: 'Script not found' }, { status: 404 })
         }
 
+        // Build update data dynamically
+        const updateData: { script?: string; topic?: string; audioUrl?: null } = {}
+
+        if (script !== undefined) {
+            updateData.script = script
+            updateData.audioUrl = null // Reset audio when script changes
+        }
+
+        if (topic !== undefined) {
+            updateData.topic = topic
+        }
+
         const updatedScript = await prisma.script.update({
             where: { id },
-            data: {
-                script,
-                audioUrl: null
-            },
+            data: updateData,
         })
 
         return NextResponse.json({ success: true, script: updatedScript })

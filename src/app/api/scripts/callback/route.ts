@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { scriptId, script, audioUrl, audioBase64, status, error } = body
+        const { scriptId, script, audioUrl, audioFiles, audioBase64, status, error } = body
 
         if (!scriptId) {
             return NextResponse.json({ error: 'scriptId is required' }, { status: 400 })
@@ -26,10 +26,38 @@ export async function POST(request: NextRequest) {
             updateData.script = script
         }
 
-        // Support both audioUrl (Google Drive) and audioBase64 (legacy)
-        if (audioUrl !== undefined && audioUrl !== null) {
+        // Support audioFiles array (new format) - MERGE with existing audio files
+        if (audioFiles !== undefined && audioFiles !== null && Array.isArray(audioFiles)) {
+            // Get existing audioFiles from database
+            const existingAudioFiles = (existingScript.audioFiles as any[]) || []
+
+            // Create a map of existing audio files by timestamp for easy lookup
+            const existingAudioMap = new Map()
+            existingAudioFiles.forEach((audio: any) => {
+                if (audio.timestamp) {
+                    existingAudioMap.set(audio.timestamp, audio)
+                }
+            })
+
+            // Merge: Add or update audio files from the new batch
+            audioFiles.forEach((newAudio: any) => {
+                if (newAudio.timestamp) {
+                    existingAudioMap.set(newAudio.timestamp, newAudio)
+                }
+            })
+
+            // Convert map back to array and sort by blockIndex
+            const mergedAudioFiles = Array.from(existingAudioMap.values())
+                .sort((a: any, b: any) => (a.blockIndex || 0) - (b.blockIndex || 0))
+
+            updateData.audioFiles = mergedAudioFiles
+        }
+        // Support single audioUrl (legacy or fallback)
+        else if (audioUrl !== undefined && audioUrl !== null) {
             updateData.audioUrl = audioUrl
-        } else if (audioBase64 !== undefined && audioBase64 !== null) {
+        }
+        // Support audioBase64 (legacy)
+        else if (audioBase64 !== undefined && audioBase64 !== null) {
             updateData.audioUrl = `data:audio/mpeg;base64,${audioBase64}`
         }
 

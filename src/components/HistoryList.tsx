@@ -1,17 +1,8 @@
 'use client'
 
-import { VolumeHighOutline, TrashOutline } from 'react-ionicons'
-
-interface Script {
-    id: string
-    topic: string
-    script: string | null
-    audioUrl: string | null
-    status: string
-    error: string | null
-    createdAt: string
-    updatedAt: string
-}
+import { useState } from 'react'
+import { VolumeHighOutline, TrashOutline, Reload } from 'react-ionicons'
+import { Script } from '@/lib/types/script'
 
 interface HistoryListProps {
     scripts: Script[]
@@ -21,6 +12,7 @@ interface HistoryListProps {
 }
 
 export default function HistoryList({ scripts, onSelect, onDelete, loading = false }: HistoryListProps) {
+    const [deletingId, setDeletingId] = useState<string | null>(null)
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleString('id-ID', {
             day: '2-digit',
@@ -81,13 +73,23 @@ export default function HistoryList({ scripts, onSelect, onDelete, loading = fal
                     <div className="flex items-center gap-3">
                         <span className={getStatusBadge(script.status)}>{script.status}</span>
                         <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                                 e.stopPropagation()
-                                onDelete(script.id)
+                                setDeletingId(script.id)
+                                try {
+                                    await onDelete(script.id)
+                                } finally {
+                                    setDeletingId(null)
+                                }
                             }}
                             className="p-1 text-neutral-400 hover:text-red-600 transition-colors"
+                            disabled={deletingId === script.id}
                         >
-                            <TrashOutline color="currentColor" width="16px" height="16px" />
+                            {deletingId === script.id ? (
+                                <Reload color="currentColor" width="16px" height="16px" cssClasses="animate-spin" />
+                            ) : (
+                                <TrashOutline color="currentColor" width="16px" height="16px" />
+                            )}
                         </button>
                     </div>
                 </div>

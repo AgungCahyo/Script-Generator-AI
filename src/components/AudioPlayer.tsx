@@ -6,15 +6,20 @@ import {
     PauseOutline,
     VolumeHighOutline,
     VolumeMuteOutline,
-    DownloadOutline
+    DownloadOutline,
+    TrashOutline
 } from 'react-ionicons'
+import { useAudioContext } from '@/contexts/AudioContext'
 
 interface AudioPlayerProps {
     src: string
+    onDelete?: () => void
 }
 
-export default function AudioPlayer({ src }: AudioPlayerProps) {
+export default function AudioPlayer({ src, onDelete }: AudioPlayerProps) {
     const audioRef = useRef<HTMLAudioElement>(null)
+    const playerIdRef = useRef<string>(`audio-${Math.random().toString(36).substr(2, 9)}`)
+    const audioContext = useAudioContext()
     const [isPlaying, setIsPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -23,38 +28,89 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
     const [playbackRate, setPlaybackRate] = useState(1)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const animationRef = useRef<number | null>(null)
+    const lastUpdateRef = useRef<number>(0)
+
+    // Smooth slider animation using requestAnimationFrame with throttling
+    useEffect(() => {
+        const audio = audioRef.current
+        if (!audio) return
+
+        const updateProgress = (timestamp: number) => {
+            // Throttle updates to ~30fps for smoother visual
+            if (timestamp - lastUpdateRef.current >= 4) {
+                setCurrentTime(audio.currentTime)
+                lastUpdateRef.current = timestamp
+            }
+            if (isPlaying && !audio.paused) {
+                animationRef.current = requestAnimationFrame(updateProgress)
+            }
+        }
+
+        if (isPlaying) {
+            animationRef.current = requestAnimationFrame(updateProgress)
+        }
+
+        return () => {
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current)
+            }
+        }
+    }, [isPlaying])
 
     useEffect(() => {
         const audio = audioRef.current
         if (!audio) return
 
-        const updateTime = () => setCurrentTime(audio.currentTime)
         const updateDuration = () => {
             setDuration(audio.duration)
             setIsLoading(false)
         }
-        const handleEnded = () => setIsPlaying(false)
+        const handleEnded = () => {
+            setIsPlaying(false)
+            setCurrentTime(audio.duration) // Ensure slider reaches the end
+        }
         const handleCanPlay = () => setIsLoading(false)
         const handleError = () => {
             setError('Failed to load audio')
             setIsLoading(false)
-            console.error('Audio load error:', audio.error)
         }
 
-        audio.addEventListener('timeupdate', updateTime)
         audio.addEventListener('loadedmetadata', updateDuration)
         audio.addEventListener('ended', handleEnded)
         audio.addEventListener('canplay', handleCanPlay)
         audio.addEventListener('error', handleError)
 
         return () => {
-            audio.removeEventListener('timeupdate', updateTime)
             audio.removeEventListener('loadedmetadata', updateDuration)
             audio.removeEventListener('ended', handleEnded)
             audio.removeEventListener('canplay', handleCanPlay)
             audio.removeEventListener('error', handleError)
         }
     }, [])
+
+    // Register/unregister audio player with context
+    useEffect(() => {
+        const audio = audioRef.current
+        if (!audio) return
+
+        const playerId = playerIdRef.current
+        audioContext.registerPlayer(playerId, audio)
+
+        // Handle external pause (when another player starts)
+        const handlePause = () => {
+            if (!audio.paused) {
+                setIsPlaying(false)
+            }
+        }
+
+        audio.addEventListener('pause', handlePause)
+
+        return () => {
+            audioContext.unregisterPlayer(playerId)
+            audio.removeEventListener('pause', handlePause)
+        }
+    }, [audioContext])
 
     const togglePlay = async () => {
         const audio = audioRef.current
@@ -65,11 +121,12 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
                 audio.pause()
                 setIsPlaying(false)
             } else {
+                // Pause all other audio players before playing this one
+                audioContext.pauseOthers(playerIdRef.current)
                 await audio.play()
                 setIsPlaying(true)
             }
         } catch (err) {
-            console.error('Play error:', err)
             setError('Failed to play audio. Please try downloading instead.')
             setIsPlaying(false)
         }
@@ -148,7 +205,7 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
 
             {/* Error Message */}
             {error && (
-                <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                <div className="mb-2 p-2 bg-black border border-red-200 rounded text-xs text-red-600">
                     {error}
                 </div>
             )}
@@ -159,7 +216,7 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
                 <button
                     onClick={togglePlay}
                     disabled={isLoading || !!error}
-                    className="flex-shrink-0 w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
+                    className="shrink-0 w-10 h-10 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                 >
                     {isPlaying ? (
                         <PauseOutline color="#ffffff" width="20px" height="20px" />
@@ -177,12 +234,13 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
                         type="range"
                         min="0"
                         max={duration || 0}
+                        step="any"
                         value={currentTime}
                         onChange={handleSeek}
                         disabled={isLoading || !!error}
                         className="flex-1 min-w-0 h-1.5 sm:h-2 bg-neutral-200 rounded-full appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation
                             [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 sm:[&::-webkit-slider-thumb]:w-4 sm:[&::-webkit-slider-thumb]:h-4
-                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-900
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neutral-900 [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:duration-75
                             [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 sm:[&::-moz-range-thumb]:w-4 sm:[&::-moz-range-thumb]:h-4 
                             [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neutral-900 [&::-moz-range-thumb]:border-0"
                     />
@@ -192,7 +250,7 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
                 </div>
 
                 {/* Volume Control - Desktop only */}
-                <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+                <div className="hidden sm:flex items-center gap-2 shrink-0">
                     <button onClick={toggleMute} className="p-1.5 rounded hover:bg-neutral-200 transition-colors">
                         {isMuted || volume === 0 ? (
                             <VolumeMuteOutline color="#a3a3a3" width="18px" height="18px" />
@@ -204,7 +262,7 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
                         type="range"
                         min="0"
                         max="1"
-                        step="0.1"
+                        step="0.01"
                         value={isMuted ? 0 : volume}
                         onChange={handleVolumeChange}
                         className="w-20 h-1 bg-neutral-200 rounded-full appearance-none cursor-pointer
@@ -233,16 +291,30 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
                         </button>
                     ))}
                 </div>
+                <div className='flex items-center gap-1.5 sm:gap-2'>
 
-                {/* Download Button */}
-                <a
-                    href={src}
-                    download
-                    className="flex-shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 rounded transition-all active:scale-95 touch-manipulation"
-                >
-                    <DownloadOutline color="currentColor" width="14px" height="14px" />
-                    <span className="hidden sm:inline">Download</span>
-                </a>
+                    {/* Download Button */}
+                    <a
+                        href={src}
+                        download
+                        className="shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 rounded transition-all active:scale-95 touch-manipulation"
+                    >
+                        <DownloadOutline color="currentColor" width="14px" height="14px" />
+                        <span className="hidden sm:inline">Download</span>
+                    </a>
+
+                    {/* Delete Button */}
+                    {onDelete && (
+                        <button
+                            onClick={onDelete}
+                            className="shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 rounded transition-all active:scale-95 touch-manipulation"
+                            title="Hapus Audio"
+                        >
+                            <TrashOutline color="currentColor" width="14px" height="14px" />
+                            <span className="hidden sm:inline">Hapus</span>
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     )

@@ -5,6 +5,9 @@ import {
     formatInstructions,
     hookInstructions,
     languageInstructions,
+    voiceToneInstructions,
+    pacingInstructions,
+    vocabularyInstructions,
     SCRIPT_FORMAT_TEMPLATE
 } from './templates'
 
@@ -18,7 +21,12 @@ export interface PromptParams {
     language: string
     hookStyle: string
     additionalNotes: string
+    // Narration customization
+    voiceTone: string
+    pacing: string
+    vocabularyLevel: string
 }
+
 
 /**
  * Build system prompt for script generation
@@ -35,7 +43,10 @@ export function buildSystemPrompt(params: PromptParams): string {
         targetAudience,
         language,
         hookStyle,
-        additionalNotes
+        additionalNotes,
+        voiceTone,
+        pacing,
+        vocabularyLevel
     } = params
 
     let systemPrompt = `Kamu adalah Content Creator profesional yang ahli membuat naskah video viral.
@@ -48,6 +59,11 @@ Buat NASKAH VIDEO untuk TOPIK yang diberikan dengan spesifikasi berikut:
 📋 ${formatInstructions[format] || formatInstructions['monolog']}
 🎣 ${hookInstructions[hookStyle] || hookInstructions['question']}
 🌐 ${languageInstructions[language] || languageInstructions['id-casual']}
+
+🎤 NARRATION STYLE:
+${voiceToneInstructions[voiceTone] || voiceToneInstructions['friendly']}
+⏱️ ${pacingInstructions[pacing] || pacingInstructions['medium']}
+📚 ${vocabularyInstructions[vocabularyLevel] || vocabularyInstructions['conversational']}
 `
 
     if (targetAudience) {

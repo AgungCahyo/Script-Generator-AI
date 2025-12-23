@@ -12,8 +12,14 @@ import {
     DEFAULT_LANGUAGE,
     DEFAULT_HOOK_STYLE
 } from '@/lib/constants/script-options'
+import {
+    DEFAULT_VOICE_TONE,
+    DEFAULT_PACING,
+    DEFAULT_VOCABULARY
+} from '@/lib/constants/narration-options'
 import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
 import { parseGeminiError, parseDatabaseError } from '@/lib/utils/errors'
+import { calculateScriptCost, checkCredits, deductCredits, getUserCredits, InsufficientCreditsError } from '@/lib/credits'
 
 // POST: Generate script with streaming
 export async function POST(request: NextRequest) {
@@ -37,8 +43,13 @@ export async function POST(request: NextRequest) {
             targetAudience = '',
             language = DEFAULT_LANGUAGE,
             hookStyle = DEFAULT_HOOK_STYLE,
-            additionalNotes = ''
+            additionalNotes = '',
+            // Narration customization
+            voiceTone = DEFAULT_VOICE_TONE,
+            pacing = DEFAULT_PACING,
+            vocabularyLevel = DEFAULT_VOCABULARY
         } = body
+
 
         if (!topic) {
             return new Response(
@@ -47,7 +58,7 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Ensure user exists in database
+        // Ensure user exists in database BEFORE credit operations
         try {
             await prisma.user.upsert({
                 where: { id: user.uid },
@@ -55,11 +66,55 @@ export async function POST(request: NextRequest) {
                 create: { id: user.uid, email: user.email || '' }
             })
         } catch (error) {
+            console.error('❌ User upsert failed:', error)
             const dbError = parseDatabaseError(error)
             return new Response(
                 JSON.stringify({ error: dbError.userMessage }),
                 { status: dbError.statusCode, headers: { 'Content-Type': 'application/json' } }
             )
+        }
+
+        // Calculate credit cost based on duration
+        // Handle duration as string (e.g., "3m") or number
+        const durationValue = typeof duration === 'string' ? parseInt(duration) : duration
+        const creditCost = calculateScriptCost(durationValue)
+
+        // Check if user has enough credits
+        const hasEnoughCredits = await checkCredits(user.uid, creditCost)
+
+        if (!hasEnoughCredits) {
+            const currentCredits = await getUserCredits(user.uid)
+            return new Response(
+                JSON.stringify({
+                    error: 'Insufficient credits',
+                    required: creditCost,
+                    available: currentCredits,
+                    message: `You need ${creditCost} credits but only have ${currentCredits}. Please purchase more credits.`
+                }),
+                { status: 402, headers: { 'Content-Type': 'application/json' } } // 402 Payment Required
+            )
+        }
+
+        // Deduct credits BEFORE processing (atomic operation)
+        try {
+            await deductCredits(
+                user.uid,
+                creditCost,
+                `Script generation: ${topic} (${duration} min)`,
+                { topic, duration, platform, tone, format }
+            )
+        } catch (error) {
+            if (error instanceof InsufficientCreditsError) {
+                return new Response(
+                    JSON.stringify({
+                        error: 'Insufficient credits',
+                        required: error.required,
+                        available: error.available
+                    }),
+                    { status: 402, headers: { 'Content-Type': 'application/json' } }
+                )
+            }
+            throw error // Re-throw unexpected errors
         }
 
         // Create script record
@@ -74,6 +129,7 @@ export async function POST(request: NextRequest) {
             })
         } catch (error) {
             const dbError = parseDatabaseError(error)
+            // TODO: Refund credits if script creation fails
             return new Response(
                 JSON.stringify({ error: dbError.userMessage }),
                 { status: dbError.statusCode, headers: { 'Content-Type': 'application/json' } }
@@ -102,7 +158,10 @@ export async function POST(request: NextRequest) {
             targetAudience,
             language,
             hookStyle,
-            additionalNotes
+            additionalNotes,
+            voiceTone,
+            pacing,
+            vocabularyLevel
         })
 
         // Create streaming response

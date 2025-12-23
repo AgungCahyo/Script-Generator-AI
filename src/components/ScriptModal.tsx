@@ -1,7 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import AudioPlayer from './AudioPlayer'
+import MediaGallery from './MediaGallery'
+import MediaToolbar from './MediaToolbar'
+import { useToast } from './Toast'
+import { useConfirm } from './Confirm'
+import { PexelsImage } from '@/lib/types/pexels'
 import {
     DocumentTextOutline,
     CloseOutline,
@@ -10,30 +15,15 @@ import {
     VolumeHighOutline,
     Reload,
     CreateOutline,
-    SaveOutline,
-    CloseCircleOutline
+    MicOutline
 } from 'react-ionicons'
 
-interface Script {
-    id: string
-    topic: string
-    script: string | null
-    audioUrl: string | null
-    status: string
-    error: string | null
-    createdAt: string
-    updatedAt: string
-}
-
-interface ScriptModalProps {
-    script: Script | null
-    isOpen: boolean
-    onClose: () => void
-    onGenerateAudio: () => void
-    generatingAudio: boolean
-    onScriptUpdated: (script: Script) => void
-    onRetry?: (scriptId: string) => void
-}
+// Import modular utilities and hooks
+import { useScriptTyping, useScriptModal, useScriptActions } from './ScriptModal/hooks'
+import { ReviewWarning, ScriptSectionCard } from './ScriptModal/components'
+import { formatDate, extractKeywords, parseScriptSections, hasScriptSections, type Script, type ScriptModalProps, type ScriptSection } from './ScriptModal/utils'
+import { OPENAI_TTS_VOICES, DEFAULT_VOICE } from '@/lib/constants/voice-options'
+import VoiceSelector from './VoiceSelector'
 
 export default function ScriptModal({
     script,
@@ -42,28 +32,26 @@ export default function ScriptModal({
     onGenerateAudio,
     generatingAudio,
     onScriptUpdated,
-    onRetry
+    onRetry,
+    authToken
 }: ScriptModalProps) {
-    const [copied, setCopied] = useState(false)
-    const [isEditing, setIsEditing] = useState(false)
-    const [editedScript, setEditedScript] = useState('')
-    const [saving, setSaving] = useState(false)
+    const { showSuccess, showError, showWarning } = useToast()
+    const { confirm } = useConfirm()
 
-    useEffect(() => {
-        if (script?.script) {
-            setEditedScript(script.script)
-        }
-    }, [script?.script])
+    // Voice selector state
+    const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE)
+    const [previewAudio, setPreviewAudio] = useState<HTMLAudioElement | null>(null)
 
+    // Use custom hooks for modular state management
+    const { displayedScript, skipTyping, isTyping, scriptContentRef } = useScriptTyping(script, authToken, onScriptUpdated)
+    const { isMounted, copied, copyToClipboard, isEditingTitle, editedTitle, handleEditTitle, handleCancelEditTitle, setEditedTitle } = useScriptModal(isOpen)
+    const { savingTitle, handleSaveTitle: saveTitle, saving, handleSave: saveScript, fetchingImages, handleFetchImages: fetchImages, generatingVideo, handleGenerateVideo: generateVideo, handleDeleteMedia: deleteMedia } = useScriptActions(script, authToken)
+
+    // Close on Escape key
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
-                if (isEditing) {
-                    setIsEditing(false)
-                    setEditedScript(script?.script || '')
-                } else {
-                    onClose()
-                }
+                onClose()
             }
         }
         if (isOpen) {
@@ -74,268 +62,515 @@ export default function ScriptModal({
             document.removeEventListener('keydown', handleEscape)
             document.body.style.overflow = 'unset'
         }
-    }, [isOpen, onClose, isEditing, script?.script])
+    }, [isOpen, onClose])
 
     if (!isOpen || !script) return null
 
-    const copyToClipboard = () => {
-        const textToCopy = isEditing ? editedScript : script.script
-        if (textToCopy) {
-            navigator.clipboard.writeText(textToCopy)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 2000)
+    // Wrapped action handlers with toast notifications
+
+    const handleFetchImagesClick = async (keywords: string, count: number, orientation: string, source?: string) => {
+        if (!authToken) {
+            showWarning('Login dulu dong buat cari gambar')
+            return
         }
+
+        // Store initial image count
+        const initialImageCount = (script.imageUrls as any[])?.length || 0
+
+        await fetchImages(
+            keywords,
+            count,
+            orientation,
+            source,
+            async (images) => {
+                // Start polling for updated images (callback updates DB async)
+                let pollAttempts = 0
+                const maxAttempts = 15 // Poll for max 30 seconds
+
+                const pollForImages = setInterval(async () => {
+                    try {
+                        const res = await fetch(`/api/scripts/${script.id}`, {
+                            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                        })
+                        const data = await res.json()
+
+                        if (data.script) {
+                            const newImageCount = (data.script.imageUrls as any[])?.length || 0
+
+                            // Check if new images appeared
+                            if (newImageCount > initialImageCount) {
+                                clearInterval(pollForImages)
+                                onScriptUpdated(data.script)
+                                showSuccess(`Fetched ${newImageCount - initialImageCount} images successfully`)
+                                return
+                            }
+                        }
+
+                        pollAttempts++
+                        if (pollAttempts >= maxAttempts) {
+                            clearInterval(pollForImages)
+                            showWarning('Images fetch timed out. Please refresh to see results.')
+                        }
+                    } catch (error) {
+                    }
+                }, 2000) // Poll every 2 seconds
+            },
+            (error) => showError(error)
+        )
     }
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString('id-ID', {
-            weekday: 'long',
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
+    const handleGenerateVideoClick = async (keywords: string, count: number, orientation: string, source?: string) => {
+        if (!authToken) {
+            showWarning('Login dulu buat cari video')
+            return
+        }
+
+        // Store initial media count
+        const initialMediaCount = (script.imageUrls as any[])?.length || 0
+
+        await generateVideo(
+            keywords,
+            count,
+            orientation,
+            source,
+            async (videos) => {
+                // Start polling for updated videos (callback updates DB async)
+                let pollAttempts = 0
+                const maxAttempts = 15 // Poll for max 30 seconds
+
+                const pollForVideos = setInterval(async () => {
+                    try {
+                        const res = await fetch(`/api/scripts/${script.id}`, {
+                            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                        })
+                        const data = await res.json()
+
+                        if (data.script) {
+                            const newMediaCount = (data.script.imageUrls as any[])?.length || 0
+
+                            // Check if new videos appeared
+                            if (newMediaCount > initialMediaCount) {
+                                clearInterval(pollForVideos)
+                                onScriptUpdated(data.script)
+                                showSuccess(`Fetched ${newMediaCount - initialMediaCount} videos successfully`)
+                                return
+                            }
+                        }
+
+                        pollAttempts++
+                        if (pollAttempts >= maxAttempts) {
+                            clearInterval(pollForVideos)
+                            showWarning('Video search timed out. Please refresh to see results.')
+                        }
+                    } catch (error) {
+                    }
+                }, 2000) // Poll every 2 seconds
+            },
+            (error) => showError(error)
+        )
+    }
+
+    const handleDeleteMediaClick = async (mediaId: string) => {
+        await deleteMedia(
+            mediaId,
+            async () => {
+                // Refetch script from database to get updated imageUrls
+                try {
+                    const res = await fetch(`/api/scripts/${script.id}`, {
+                        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                    })
+                    const data = await res.json()
+                    if (data.script) {
+                        onScriptUpdated(data.script)
+                    }
+                } catch (error) {
+                }
+                showSuccess('Media deleted successfully')
+            },
+            (error) => showError(error)
+        )
+    }
+
+    const handleCopyClick = () => copyToClipboard(script.script || '')
+
+    const handleSaveTitleClick = async () => {
+        if (!authToken) {
+            showWarning('Login dulu ya buat edit judul')
+            return
+        }
+        if (!editedTitle.trim()) {
+            showWarning('Title cannot be empty')
+            return
+        }
+        await saveTitle(
+            editedTitle.trim(),
+            (updated) => {
+                onScriptUpdated(updated)
+                handleCancelEditTitle()
+                showSuccess('Title saved successfully')
+            },
+            (error) => showError(error)
+        )
+    }
+
+    // Handle section update
+    const handleSectionUpdate = async (updatedSection: ScriptSection) => {
+        if (!authToken || !script?.script) return
+
+        // Parse all sections
+        const sections = parseScriptSections(script.script)
+
+        // Update the specific section
+        const newSections = sections.map(s =>
+            s.index === updatedSection.index ? updatedSection : s
+        )
+
+        // Rebuild the script text
+        const newScriptText = newSections.map(s =>
+            `${s.timestamp}\nVISUAL: ${s.visual}\nNARASI: ${s.narasi}`
+        ).join('\n\n')
+
+        // Save to database
+        await saveScript(
+            newScriptText,
+            (updated) => {
+                onScriptUpdated(updated)
+                // Don't show success toast here, card component already shows it
+            },
+            (error) => showError(error)
+        )
+    }
+
+    // Handle voice preview
+    const handleVoicePreview = (voiceId: string) => {
+        // Stop any currently playing preview
+        if (previewAudio) {
+            previewAudio.pause()
+            previewAudio.currentTime = 0
+        }
+
+        // Use pre-recorded sample from public folder
+        const previewUrl = `/voice-samples/${voiceId}.mp3`
+
+        // Create and play audio
+        const audio = new Audio(previewUrl)
+        setPreviewAudio(audio)
+
+        audio.play().catch(err => {
+            console.error('Error playing preview:', err)
+            showError('Gagal preview voice. Coba lagi ya!')
         })
-    }
 
-    const handleEdit = () => {
-        setIsEditing(true)
-        setEditedScript(script.script || '')
-    }
-
-    const handleCancelEdit = () => {
-        setIsEditing(false)
-        setEditedScript(script.script || '')
-    }
-
-    const handleSave = async () => {
-        setSaving(true)
-        try {
-            const res = await fetch(`/api/scripts/${script.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ script: editedScript }),
-            })
-
-            const data = await res.json()
-
-            if (!res.ok) {
-                // API returned an error
-                alert(data.error || 'Failed to save script')
-                return
-            }
-
-            if (data.success && data.script) {
-                onScriptUpdated(data.script)
-                setIsEditing(false)
-            } else {
-                alert(data.error || 'Failed to save script')
-            }
-        } catch (error) {
-            console.error('Error saving script:', error)
-            alert('Network error. Please check your connection and try again')
-        } finally {
-            setSaving(false)
+        // Clean up when preview ends
+        audio.onended = () => {
+            setPreviewAudio(null)
         }
     }
+
+    // Extract media for gallery
+    const mediaItems = (script.imageUrls || []) as (PexelsImage & { type?: string; driveFileId?: string })[]
+    const images = mediaItems.filter((item) => item.type !== 'video')
+    const videos = mediaItems.filter((item) => item.type === 'video')
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center transition-opacity duration-300 ${isOpen && isMounted ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}>
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={() => !isEditing && onClose()}
+                className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isOpen && isMounted ? 'opacity-100' : 'opacity-0'
+                    }`}
+                onClick={onClose}
             />
 
-            {/* Modal */}
-            <div className="relative w-full max-w-4xl max-h-[90vh] mx-4 flex flex-col bg-neutral-100 rounded-lg shadow-2xl overflow-hidden">
-                {/* Toolbar */}
-                <div className="flex-shrink-0 bg-white border-b border-neutral-200">
-                    {/* Title bar */}
-                    <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-100">
-                        <div className="flex items-center gap-2">
-                            <DocumentTextOutline color="#000000" width="20px" height="20px" />
-                            <span className="text-sm font-medium text-neutral-700 truncate max-w-md">
-                                {script.topic}
-                            </span>
-                            {isEditing && (
-                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Editing</span>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => isEditing ? handleCancelEdit() : onClose()}
-                            className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
-                        >
-                            <CloseOutline color="currentColor" width="20px" height="20px" />
-                        </button>
-                    </div>
-
-                    {/* Toolbar buttons */}
-                    <div className="flex items-center gap-1 px-3 py-1.5">
-                        {isEditing ? (
+            {/* Modal with popup animation */}
+            <div className={`relative w-full h-full sm:max-w-5xl sm:max-h-[90vh] sm:m-4 bg-neutral-100 sm:rounded-lg shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-out ${isOpen && isMounted ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
+                }`}>
+                {/* Header Bar */}
+                <div className="flex items-center justify-between px-2 sm:px-4 py-2 bg-white border-b border-neutral-200">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                        <DocumentTextOutline color="#525252" width="16px" height="16px" cssClasses="hidden sm:block shrink-0" />
+                        {isEditingTitle ? (
                             <>
+                                <input
+                                    type="text"
+                                    value={editedTitle}
+                                    onChange={(e) => setEditedTitle(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleSaveTitleClick()
+                                        if (e.key === 'Escape') handleCancelEditTitle()
+                                    }}
+                                    className="flex-1 min-w-0 text-xs sm:text-sm font-medium text-neutral-700 px-2 py-1 border border-neutral-300 rounded focus:outline-none"
+                                    autoFocus
+                                />
                                 <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-white bg-neutral-900 hover:bg-neutral-800 rounded disabled:opacity-50 transition-colors"
+                                    onClick={handleSaveTitleClick}
+                                    disabled={savingTitle}
+                                    className="p-1 text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-50 shrink-0"
+                                    title="Save"
                                 >
-                                    {saving ? (
-                                        <Reload color="currentColor" width="16px" height="16px" cssClasses="animate-spin" />
+                                    {savingTitle ? (
+                                        <Reload color="currentColor" width="14px" height="14px" cssClasses="animate-spin" />
                                     ) : (
-                                        <SaveOutline color="currentColor" width="16px" height="16px" />
+                                        <CheckmarkOutline color="currentColor" width="14px" height="14px" />
                                     )}
-                                    {saving ? 'Saving...' : 'Save'}
                                 </button>
                                 <button
-                                    onClick={handleCancelEdit}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
+                                    onClick={handleCancelEditTitle}
+                                    className="p-1 text-neutral-600 hover:bg-neutral-100 rounded shrink-0"
+                                    title="Cancel"
                                 >
-                                    <CloseCircleOutline color="currentColor" width="16px" height="16px" />
-                                    Cancel
+                                    <CloseOutline color="currentColor" width="14px" height="14px" />
                                 </button>
                             </>
                         ) : (
+                            <button
+                                className="flex items-center gap-1 min-w-0 text-xs sm:text-sm font-medium text-neutral-700 hover:text-neutral-500 transition-colors group"
+                                onClick={() => handleEditTitle(script.topic)}
+                                title="Click to edit title"
+                            >
+                                <span className="truncate">{script.topic}</span>
+                                <CreateOutline color="currentColor" width="12px" height="12px" cssClasses="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                            </button>
+                        )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded hidden sm:inline shrink-0 ${script.status === 'completed' ? 'bg-green-100 text-green-700' :
+                            script.status === 'failed' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                            }`}>
+                            {script.status}
+                        </span>
+                    </div>
+
+                    {/* Toolbar */}
+                    <div className="flex items-center gap-0.5 sm:gap-1">
+                        {script.status === 'completed' && (
                             <>
                                 <button
-                                    onClick={handleEdit}
-                                    disabled={!script.script}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-50 transition-colors"
-                                >
-                                    <CreateOutline color="currentColor" width="16px" height="16px" />
-                                    Edit
-                                </button>
-
-                                <button
-                                    onClick={copyToClipboard}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
+                                    onClick={handleCopyClick}
+                                    className="flex items-center gap-1 p-2 sm:px-3 sm:py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
+                                    title="Copy"
                                 >
                                     {copied ? (
-                                        <CheckmarkOutline color="currentColor" width="16px" height="16px" />
+                                        <>
+                                            <CheckmarkOutline color="#16a34a" width="16px" height="16px" />
+                                            <span className="hidden sm:inline">Copied!</span>
+                                        </>
                                     ) : (
-                                        <CopyOutline color="currentColor" width="16px" height="16px" />
+                                        <>
+                                            <CopyOutline color="currentColor" width="16px" height="16px" />
+                                            <span className="hidden sm:inline">Copy</span>
+                                        </>
                                     )}
-                                    {copied ? 'Copied!' : 'Copy'}
                                 </button>
-
-                                <div className="w-px h-4 bg-neutral-200 mx-1" />
-
-                                {script.audioUrl ? (
-                                    <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-green-600">
-                                        <CheckmarkOutline color="currentColor" width="16px" height="16px" />
-                                        Audio Generated
-                                    </span>
-                                ) : (
+                                {!script.audioFiles && !script.audioUrl && (
                                     <button
                                         onClick={onGenerateAudio}
-                                        disabled={generatingAudio || !script.script}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        disabled={generatingAudio}
+                                        className="flex items-center gap-1 p-2 sm:px-3 sm:py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-50 transition-colors"
+                                        title="Audio"
                                     >
                                         {generatingAudio ? (
                                             <>
                                                 <Reload color="currentColor" width="16px" height="16px" cssClasses="animate-spin" />
-                                                Generating...
+                                                <span className="hidden sm:inline">Generating...</span>
                                             </>
                                         ) : (
                                             <>
                                                 <VolumeHighOutline color="currentColor" width="16px" height="16px" />
-                                                Generate Audio
+                                                <span className="hidden sm:inline">Audio</span>
                                             </>
                                         )}
                                     </button>
                                 )}
+                                <MediaToolbar
+                                    scriptId={script.id}
+                                    topic={script.topic}
+                                    hasScript={!!script.script}
+                                    authToken={authToken}
+                                    onFetchImages={handleFetchImagesClick}
+                                    onGenerateVideo={handleGenerateVideoClick}
+                                    fetchingImages={fetchingImages}
+                                    generatingVideo={generatingVideo}
+                                    extractedKeywords={extractKeywords(script.script)}
+                                />
                             </>
                         )}
+
+
+                        <div className="w-px h-4 bg-neutral-200 mx-2" />
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 text-neutral-500 hover:bg-neutral-100 rounded transition-colors"
+                        >
+                            <CloseOutline color="currentColor" width="20px" height="20px" />
+                        </button>
                     </div>
                 </div>
 
                 {/* Document area */}
-                <div className="flex-1 overflow-auto p-8">
+                <div className="flex-1 overflow-auto p-4 sm:p-8">
                     <div className="max-w-3xl mx-auto bg-white rounded shadow-sm border border-neutral-200 min-h-full">
-                        <div className="p-12">
+                        <div className="p-4 sm:p-8 lg:p-12">
                             {/* Header */}
-                            <div className="mb-8 pb-6 border-b border-neutral-100">
-                                <h1 className="text-2xl font-semibold text-neutral-900 mb-2">
+                            <div className="mb-4 sm:mb-8 pb-4 sm:pb-6 border-b border-neutral-100">
+                                <h1 className="text-lg sm:text-2xl font-serif text-neutral-800 mb-2">
                                     {script.topic}
                                 </h1>
-                                <p className="text-xs text-neutral-400">
-                                    Created: {formatDate(script.createdAt)}
-                                </p>
+
+                                <div className="flex flex-col gap-1.5">
+                                    <p className="text-[10px] sm:text-xs text-neutral-400">
+                                        Created {formatDate(script.createdAt)}
+                                        {script.updatedAt !== script.createdAt &&
+                                            ` • Updated ${formatDate(script.updatedAt)}`
+                                        }
+                                    </p>
+
+                                    {extractKeywords(script.script || '') && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {extractKeywords(script.script || '')
+                                                .split(',')
+                                                .slice(0, 8)  // Limit to first 8 keywords
+                                                .map((keyword, idx) => (
+                                                    <span
+                                                        key={idx}
+                                                        className="inline-block px-2 py-0.5 text-[10px] bg-neutral-100 text-neutral-600 rounded-full whitespace-nowrap"
+                                                    >
+                                                        {keyword.trim()}
+                                                    </span>
+                                                ))
+                                            }
+                                        </div>
+                                    )}
+
+                                    {/* Voice Selector */}
+                                    {hasScriptSections(script.script || '') && (
+                                        <div className="mt-3 pt-3 border-t border-neutral-100">
+                                            <div className="flex items-center gap-2">
+                                                <MicOutline color="#737373" width="14px" height="14px" />
+                                                <span className="text-xs text-neutral-500 font-medium">TTS Voice:</span>
+                                                <div className="flex-1 max-w-xs">
+                                                    <VoiceSelector
+                                                        value={selectedVoice}
+                                                        onChange={setSelectedVoice}
+                                                        options={OPENAI_TTS_VOICES}
+                                                        disabled={false}
+                                                        onPreview={handleVoicePreview}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Audio Player */}
-                            {script.audioUrl && !isEditing && (
+                            {/* Review Warning Note */}
+                            <ReviewWarning
+                                show={script.status === 'completed' && !script.audioFiles && !script.audioUrl && displayedScript.length === (script.script?.length || 0)}
+                            />
+
+                            {/* Legacy Audio Player - only show for non-section scripts */}
+                            {!hasScriptSections(script.script || '') && script.audioUrl && (
                                 <div className="mb-6">
-                                    <AudioPlayer src={script.audioUrl} />
+                                    <AudioPlayer
+                                        src={script.audioUrl}
+                                        onDelete={() => handleDeleteMediaClick('audio')}
+                                    />
                                 </div>
                             )}
 
+                            {/* Media Gallery */}
+                            <MediaGallery
+                                images={images}
+                                videos={videos}
+                                onDeleteMedia={handleDeleteMediaClick}
+                                fetchingImages={fetchingImages}
+                            />
+
                             {/* Script Content */}
-                            {isEditing ? (
-                                <textarea
-                                    value={editedScript}
-                                    onChange={(e) => {
-                                        setEditedScript(e.target.value)
-                                        // Auto-resize textarea
-                                        e.target.style.height = 'auto'
-                                        e.target.style.height = e.target.scrollHeight + 'px'
-                                    }}
-                                    className="w-full text-sm leading-7 text-neutral-700 font-mono p-4 border border-neutral-200 rounded-lg focus:outline-none  resize-none overflow-hidden"
-                                    style={{ minHeight: '400px', height: 'auto' }}
-                                    placeholder="Enter script content..."
-                                    onFocus={(e) => {
-                                        // Set initial height on focus
-                                        e.target.style.height = 'auto'
-                                        e.target.style.height = e.target.scrollHeight + 'px'
-                                    }}
-                                />
-                            ) : script.script ? (
-                                <div className="prose prose-neutral max-w-none">
-                                    <pre className="whitespace-pre-wrap font-sans text-sm leading-7 text-neutral-700 p-0 m-0 bg-transparent border-0">
-                                        {script.script}
-                                    </pre>
-                                </div>
-                            ) : script.status === 'processing' ? (
-                                <div className="py-16 text-center">
-                                    <div className="mb-3 flex justify-center">
-                                        <Reload color="#a3a3a3" width="24px" height="24px" cssClasses="animate-spin" />
-                                    </div>
-                                    <p className="text-sm text-neutral-500">Generating script...</p>
-                                </div>
-                            ) : script.status === 'failed' ? (
-                                <div className="py-16 text-center">
-                                    <p className="text-sm text-red-600 mb-4">{script.error || 'Failed to generate script'}</p>
-                                    {onRetry && (
-                                        <button
-                                            onClick={() => onRetry(script.id)}
-                                            className="px-4 py-2 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors"
-                                        >
-                                            Retry Generation
-                                        </button>
+                            <div>
+                                <div ref={scriptContentRef}>
+                                    {script.status === 'processing' ? (
+
+
+                                        <div className="text-sm leading-7 text-neutral-700 whitespace-pre-wrap overflow-y-auto max-h-[60vh]">
+                                            {displayedScript ? (
+                                                <div>
+                                                    {displayedScript}
+                                                    <span className="inline-block w-1.5 h-4 bg-neutral-900 ml-1 animate-pulse" />
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-8">
+                                                    <div className="flex flex-col items-center gap-3">
+                                                        <Reload color="#a3a3a3" width="32px" height="32px" cssClasses="animate-spin" />
+                                                        <p className="text-neutral-400">Generating script...</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : script.status === 'failed' ? (
+                                        <div className="text-center py-8">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <p className="text-red-500">{script.error || 'Generation failed'}</p>
+                                                {onRetry && (
+                                                    <button
+                                                        onClick={() => onRetry(script.id)}
+                                                        className="px-4 py-2 text-xs bg-neutral-900 text-white rounded hover:bg-neutral-800 transition-colors"
+                                                    >
+                                                        Retry
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ) : script.script ? (
+                                        // Check if script has sections format
+                                        hasScriptSections(script.script) ? (
+                                            // Render as section cards
+                                            <div className="space-y-4">
+                                                {parseScriptSections(script.script).map((section) => (
+                                                    <ScriptSectionCard
+                                                        key={section.index}
+                                                        section={section}
+                                                        scriptId={script.id}
+                                                        authToken={authToken}
+                                                        selectedVoice={selectedVoice}
+                                                        existingAudio={script.audioFiles?.find(
+                                                            (af) => af.timestamp === section.timestamp
+                                                        )}
+                                                        onSectionUpdated={handleSectionUpdate}
+                                                        onScriptUpdated={onScriptUpdated}
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            // Render as plain text (legacy format)
+                                            <div className="text-sm leading-7 text-neutral-700 whitespace-pre-wrap overflow-y-auto max-h-[60vh]">
+                                                <div>
+                                                    {displayedScript}
+                                                    {isTyping && <span className="inline-block w-1.5 h-4 bg-neutral-900 ml-1 animate-pulse" />}
+                                                </div>
+                                            </div>
+                                        )
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <p className="text-neutral-400">No content available</p>
+                                        </div>
+                                    )}
+
+                                    {/* Skip Typing Button - shown whenever typing is active */}
+                                    {isTyping && displayedScript && (
+                                        <div className="mt-4 flex justify-center">
+                                            <button
+                                                onClick={skipTyping}
+                                                className="px-3 py-1.5 text-xs bg-neutral-800 text-white rounded-lg hover:bg-neutral-700 transition-colors flex items-center gap-1.5"
+                                            >
+                                                <span>Skip Typing</span>
+                                                <span className="text-[10px]">→</span>
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
-                            ) : null}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="px-12 py-4 border-t border-neutral-100 text-center">
-                            <p className="text-xs text-neutral-400">
-                                Script Generator • {isEditing ? 'Edit Mode' : 'Page 1 of 1'}
-                            </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Status bar */}
-                <div className="flex-shrink-0 bg-black px-4 py-1 flex items-center justify-between text-xs text-white">
-                    <span>
-                        {isEditing
-                            ? `${editedScript.length.toLocaleString()} characters`
-                            : script.script
-                                ? `${script.script.length.toLocaleString()} characters`
-                                : 'No content'
-                        }
-                    </span>
-                    <span className="capitalize">{isEditing ? 'editing' : script.status}</span>
                 </div>
             </div>
         </div>

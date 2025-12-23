@@ -48,6 +48,32 @@ export const languageInstructions: Record<string, string> = {
     'en': 'Language: English, casual but professional tone.'
 }
 
+// Narration Style Instructions
+export const voiceToneInstructions: Record<string, string> = {
+    'friendly': 'Voice Tone: Ramah dan hangat, seperti ngobrol santai dengan teman. Gunakan infleksi yang natural dan approachable.',
+    'professional': 'Voice Tone: Profesional dan berwibawa, seperti expert yang kredibel. Maintain confidence tanpa terdengar arrogant.',
+    'dramatic': 'Voice Tone: Dramatis dan penuh emosi, seperti storyteller yang passionate. Build tension dan suspense di momen yang tepat.',
+    'calm': 'Voice Tone: Tenang dan menenangkan, seperti berbisik lembut. Hindari nada tinggi atau sudden changes yang bisa mengagetkan.',
+    'energetic': 'Voice Tone: Energik dan antusias, seperti hype man yang passionate. Full of excitement tanpa terdengar berlebihan.',
+    'educational': 'Voice Tone: Jelas dan patient, seperti guru yang baik. Gunakan pacing yang memudahkan pemahaman.'
+}
+
+export const pacingInstructions: Record<string, string> = {
+    'very-slow': 'Pacing: SANGAT LAMBAT - Gunakan kalimat pendek (5-8 kata), banyak jeda. Cocok untuk ASMR/meditasi. Target: 80-100 kata per menit.',
+    'slow': 'Pacing: LAMBAT - Kalimat sedang (8-12 kata), jeda natural antar poin. Cocok untuk topik kompleks atau storytelling dramatis. Target: 120-140 kata per menit.',
+    'medium': 'Pacing: SEDANG - Kalimat normal (10-15 kata), flow natural. Standard untuk kebanyakan konten. Target: 150-170 kata per menit.',
+    'fast': 'Pacing: CEPAT - Kalimat lebih pendek dan punchy (8-12 kata), minimal jeda. Cocok untuk entertainment. Target: 180-200 kata per menit.',
+    'very-fast': 'Pacing: SANGAT CEPAT - Kalimat super pendek (5-8 kata), rapid fire delivery. Cocok untuk viral shorts. Target: 200-220 kata per menit.'
+}
+
+export const vocabularyInstructions: Record<string, string> = {
+    'simple': 'Vocabulary: SEDERHANA - Gunakan kata-kata umum yang dipahami siapa saja. Hindari jargon atau istilah teknis. Seperti berbicara dengan anak SMP.',
+    'conversational': 'Vocabulary: PERCAKAPAN - Bahasa sehari-hari yang natural. Boleh pakai istilah populer tapi tetap jelas. Seperti ngobrol dengan teman kuliah.',
+    'professional': 'Vocabulary: PROFESIONAL - Gunakan business terminology yang appropriate. Formal tapi tetap accessible. Seperti presentasi di kantor.',
+    'technical': 'Vocabulary: TEKNIS - Boleh gunakan jargon dan istilah spesifik untuk niche tertentu. Assume audience punya background knowledge. Seperti diskusi expert.'
+}
+
+
 export const SCRIPT_FORMAT_TEMPLATE = `
 ATURAN FORMAT OUTPUT:
 
@@ -60,19 +86,44 @@ ATURAN FORMAT OUTPUT:
    A. HOOK: Mulai dengan hook yang kuat sesuai gaya yang diminta
    B. CONTENT: Isi utama video
    C. CTA: Ajak audiens bertindak (subscribe, like, comment, dll)
+   D. IMAGE KEYWORDS: **WAJIB** - Sertakan rekomendasi keyword untuk mencari gambar pendukung
 
 3. PENTING:
    - LANGSUNG tulis naskah, tanpa pembuka/penutup tambahan
    - Setiap section HARUS punya [WAKTU], VISUAL:, dan NARASI:
    - NARASI tidak boleh ada label speaker, langsung teksnya
    - Sesuaikan panjang naskah dengan durasi yang diminta
+   - ⚠️ **SANGAT PENTING**: Di akhir script setelah tanda "---", WAJIB sertakan section IMAGE KEYWORDS dalam format:
+     ---
+     IMAGE KEYWORDS:
+     keyword1, keyword2, keyword3, ...
 
-CONTOH FORMAT:
+4. ⚠️ ATURAN KHUSUS UNTUK NARASI (WAJIB DIIKUTI):
+   - NARASI HANYA berisi teks murni yang akan dibacakan oleh Text-to-Speech
+   - DILARANG KERAS menambahkan bracket seperti [Chapter: ...] atau [Intro] di dalam NARASI
+   - DILARANG menambahkan label struktural apapun di dalam NARASI
+   - NARASI harus bersih dari markup, hanya kalimat yang natural untuk diucapkan
+   - Jika perlu chapter/section marker, masukkan di VISUAL saja, BUKAN di NARASI
+   
+   ❌ CONTOH SALAH:
+   NARASI: [Chapter: Kenapa Kita Takut?] Wajar banget kalau kita ngerasa takut...
+   
+   ✅ CONTOH BENAR:
+   VISUAL: Teks chapter "Kenapa Kita Takut?" muncul di layar
+   NARASI: Wajar banget kalau kita ngerasa takut pas ada teknologi baru...
+
+CONTOH FORMAT LENGKAP:
 [00:00]
 VISUAL: Wajah ekspresif menatap kamera
-NARASI: (hook sesuai gaya yang diminta)
+NARASI: Pernah nggak sih lu kepikiran, kenapa ada orang yang karirnya melejit banget?
 
 [00:15]
-VISUAL: Teks highlight muncul
-NARASI: (lanjutan content)
+VISUAL: Teks highlight muncul dengan chapter marker
+NARASI: Wajar banget kalau kita ngerasa takut pas ada teknologi baru kayak AI.
+
+---
+IMAGE KEYWORDS:
+technology innovation, artificial intelligence concept, business success, productivity workspace, modern office, laptop working, data visualization, future technology
+
+⚠️ INGAT: Section IMAGE KEYWORDS di atas adalah WAJIB dan HARUS ada di setiap script!
 `
