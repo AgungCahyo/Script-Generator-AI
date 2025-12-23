@@ -22,6 +22,7 @@ export default function VoiceSelector({
     const [isOpen, setIsOpen] = useState(false)
     const [playingVoice, setPlayingVoice] = useState<string | null>(null)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    const audioRef = useRef<HTMLAudioElement | null>(null)
 
     const selectedOption = options.find(opt => opt.value === value)
 
@@ -48,16 +49,39 @@ export default function VoiceSelector({
 
     const handlePreview = (e: React.MouseEvent, voiceId: string) => {
         e.stopPropagation() // Prevent dropdown from closing
+
+        // Stop any currently playing audio
+        if (audioRef.current) {
+            audioRef.current.pause()
+            audioRef.current.currentTime = 0
+        }
+
         setPlayingVoice(voiceId)
 
+        // Use static voice sample files instead of API
+        const audioPath = `/voice-samples/${voiceId}.mp3`
+        const audio = new Audio(audioPath)
+        audioRef.current = audio
+
+        audio.play().catch((error) => {
+            console.error('Audio playback failed:', error)
+            setPlayingVoice(null)
+        })
+
+        // Stop playing indicator when audio ends
+        audio.onended = () => {
+            setPlayingVoice(null)
+        }
+
+        // Fallback: stop indicator after 5 seconds if audio doesn't end
+        setTimeout(() => {
+            setPlayingVoice(null)
+        }, 5000)
+
+        // Legacy callback for backward compatibility
         if (onPreview) {
             onPreview(voiceId)
         }
-
-        // Auto-stop playing indicator after 3 seconds (estimated preview duration)
-        setTimeout(() => {
-            setPlayingVoice(null)
-        }, 3000)
     }
 
     return (
@@ -67,8 +91,8 @@ export default function VoiceSelector({
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 disabled={disabled}
                 className={`w-full h-10 px-3 text-sm bg-white border border-neutral-200 rounded-lg text-left flex items-center justify-between transition-all ${disabled
-                        ? 'bg-neutral-50 cursor-not-allowed opacity-60'
-                        : 'hover:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent'
+                    ? 'bg-neutral-50 cursor-not-allowed opacity-60'
+                    : 'hover:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent'
                     } ${isOpen ? 'ring-2 ring-neutral-900 border-transparent' : ''}`}
             >
                 <span className={selectedOption ? 'text-neutral-900' : 'text-neutral-400'}>
@@ -88,8 +112,8 @@ export default function VoiceSelector({
                         <div
                             key={option.value}
                             className={`flex items-center gap-2 px-3 py-2.5 transition-colors ${option.value === value
-                                    ? 'bg-neutral-100'
-                                    : 'hover:bg-neutral-50'
+                                ? 'bg-neutral-100'
+                                : 'hover:bg-neutral-50'
                                 }`}
                         >
                             {/* Voice info - clickable to select */}
@@ -117,8 +141,8 @@ export default function VoiceSelector({
                                 onClick={(e) => handlePreview(e, option.value)}
                                 disabled={!onPreview}
                                 className={`p-1.5 rounded transition-colors shrink-0 ${playingVoice === option.value
-                                        ? 'bg-neutral-900 text-white'
-                                        : 'hover:bg-neutral-200 text-neutral-600'
+                                    ? 'bg-neutral-900 text-white'
+                                    : 'hover:bg-neutral-200 text-neutral-600'
                                     } ${!onPreview ? 'opacity-30 cursor-not-allowed' : ''}`}
                                 title="Preview voice"
                             >

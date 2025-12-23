@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+/**
+ * @deprecated This endpoint is deprecated as of 2025-12-23
+ * Voice previews now use static audio files from /public/voice-samples/
+ * This saves API costs and improves performance.
+ * Kept for backward compatibility only.
+ */
+
 // GET: Generate TTS preview for a voice
 export async function GET(request: NextRequest) {
     try {
