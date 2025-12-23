@@ -16,6 +16,10 @@ export async function POST(
 
         const { id } = await params
 
+        // Extract request body for voiceId
+        const body = await request.json()
+        const { voiceId } = body
+
         // Find script and verify ownership
         const script = await prisma.script.findFirst({
             where: { id, userId: user.uid },
@@ -43,6 +47,7 @@ export async function POST(
             body: JSON.stringify({
                 scriptId: script.id,
                 script: script.script,
+                voiceId: voiceId || 'alloy', // Default to 'alloy' if not provided
                 callbackUrl,
             }),
         }).catch(err => console.error('TTS webhook error:', err))

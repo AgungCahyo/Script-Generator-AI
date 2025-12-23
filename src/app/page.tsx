@@ -310,7 +310,7 @@ export default function Home() {
     fetchScripts()
   }
 
-  const handleGenerateAudio = async () => {
+  const handleGenerateAudio = async (selectedVoice?: string) => {
     if (!modalScript) return
     setGeneratingAudio(true)
 
@@ -318,7 +318,11 @@ export default function Home() {
       const token = await getIdToken()
       const res = await fetch(`/api/scripts/${modalScript.id}/generate-audio`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ voiceId: selectedVoice || 'alloy' })
       })
       const data = await res.json()
 
