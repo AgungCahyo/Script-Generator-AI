@@ -337,7 +337,7 @@ export default function ScriptModal({
                                 </button>
                                 {!script.audioFiles && !script.audioUrl && (
                                     <button
-                                        onClick={onGenerateAudio}
+                                        onClick={() => onGenerateAudio(selectedVoice)}
                                         disabled={generatingAudio}
                                         className="flex items-center gap-1 p-2 sm:px-3 sm:py-1.5 text-xs text-neutral-600 hover:bg-neutral-100 rounded disabled:opacity-50 transition-colors"
                                         title="Audio"
