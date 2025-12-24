@@ -4,11 +4,13 @@ import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { CheckmarkCircleOutline } from 'react-ionicons'
 import Link from 'next/link'
+import LoadingScreen from '@/components/LoadingScreen'
 
 function PaymentSuccessContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const [countdown, setCountdown] = useState(5)
+    const [redirecting, setRedirecting] = useState(false)
 
     const orderId = searchParams.get('order_id')
     const transactionStatus = searchParams.get('transaction_status')
@@ -16,11 +18,18 @@ function PaymentSuccessContent() {
     // Redirect to pending page if transaction is not actually successful
     useEffect(() => {
         if (transactionStatus && transactionStatus !== 'settlement' && transactionStatus !== 'capture') {
+            // Show loading immediately to prevent flash
+            setRedirecting(true)
             // Transaction is pending, denied, expired, or cancelled
             router.replace(`/payment/pending?order_id=${orderId || ''}`)
             return
         }
     }, [transactionStatus, orderId, router])
+
+    // Show loading screen while redirecting
+    if (redirecting) {
+        return <LoadingScreen message="Redirecting..." />
+    }
 
     useEffect(() => {
         const timer = setInterval(() => {
