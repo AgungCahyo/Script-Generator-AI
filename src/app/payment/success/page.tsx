@@ -13,6 +13,15 @@ function PaymentSuccessContent() {
     const orderId = searchParams.get('order_id')
     const transactionStatus = searchParams.get('transaction_status')
 
+    // Redirect to pending page if transaction is not actually successful
+    useEffect(() => {
+        if (transactionStatus && transactionStatus !== 'settlement' && transactionStatus !== 'capture') {
+            // Transaction is pending, denied, expired, or cancelled
+            router.replace(`/payment/pending?order_id=${orderId || ''}`)
+            return
+        }
+    }, [transactionStatus, orderId, router])
+
     useEffect(() => {
         const timer = setInterval(() => {
             setCountdown((prev) => {
