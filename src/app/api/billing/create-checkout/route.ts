@@ -95,6 +95,9 @@ export async function POST(request: NextRequest) {
                 credits,
                 description,
                 callbackUrl,
+                finishUrl: `${appUrl}/payment/success`,
+                errorUrl: `${appUrl}/payment/error`,
+                unfinishUrl: `${appUrl}/payment/error`,
             }),
         })
 
