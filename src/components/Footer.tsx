@@ -6,27 +6,27 @@ export default function Footer() {
             <div className="max-w-3xl mx-auto px-6 py-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     {/* Links */}
-                    <div className="flex items-center gap-4 text-sm text-neutral-500">
+                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-sm text-neutral-500">
                         <Link href="/showcase" className="hover:text-neutral-900 transition-colors">
                             Showcase
                         </Link>
-                        <span className="text-neutral-300">•</span>
+                        <span className="text-neutral-300 hidden sm:inline">•</span>
                         <Link href="/pricing" className="hover:text-neutral-900 transition-colors">
                             Pricing
                         </Link>
-                        <span className="text-neutral-300">•</span>
+                        <span className="text-neutral-300 hidden sm:inline">•</span>
                         <Link href="/help" className="hover:text-neutral-900 transition-colors">
                             Panduan
                         </Link>
-                        <span className="text-neutral-300">•</span>
+                        <span className="text-neutral-300 hidden sm:inline">•</span>
                         <Link href="/terms" className="hover:text-neutral-900 transition-colors">
                             Terms
                         </Link>
-                        <span className="text-neutral-300">•</span>
+                        <span className="text-neutral-300 hidden sm:inline">•</span>
                         <Link href="/privacy" className="hover:text-neutral-900 transition-colors">
                             Privacy
                         </Link>
-                        <span className="text-neutral-300">•</span>
+                        <span className="text-neutral-300 hidden sm:inline">•</span>
                         <a href="mailto:agungcahyop29@gmail.com" className="hover:text-neutral-900 transition-colors">
                             Kontak
                         </a>
