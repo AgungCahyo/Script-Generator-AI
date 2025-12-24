@@ -26,11 +26,7 @@ function PaymentSuccessContent() {
         }
     }, [transactionStatus, orderId, router])
 
-    // Show loading screen while redirecting
-    if (redirecting) {
-        return <LoadingScreen message="Redirecting..." />
-    }
-
+    // Countdown timer for auto-redirect to dashboard
     useEffect(() => {
         const timer = setInterval(() => {
             setCountdown((prev) => {
@@ -45,6 +41,11 @@ function PaymentSuccessContent() {
 
         return () => clearInterval(timer)
     }, [router])
+
+    // Show loading screen while redirecting (after all hooks)
+    if (redirecting) {
+        return <LoadingScreen message="Redirecting..." />
+    }
 
     return (
         <div className="min-h-screen bg-white flex items-center justify-center p-4">
