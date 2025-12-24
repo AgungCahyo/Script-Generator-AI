@@ -7,12 +7,14 @@ export interface AudioFile {
     audioUrl: string
     fileName: string
     duration?: number | null
+    voiceId?: string | null  // OpenAI TTS voice used for this audio
 }
 
 export interface Script {
     id: string
     topic: string
     script: string | null
+    keywords: string | null  // Extracted keywords for media search
     audioUrl: string | null  // Legacy: single audio file
     audioFiles: AudioFile[] | null  // New: array of audio files per NARASI
     imageUrls: PexelsImage[] | null

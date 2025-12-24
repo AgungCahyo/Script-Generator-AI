@@ -1,0 +1,29 @@
+{
+    "name": "ScriptAI - Generator Skrip Video AI",
+    "short_name": "ScriptAI",
+    "description": "Generate skrip video profesional dengan AI Gemini 3.0",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#171717",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "productivity",
+        "utilities"
+    ],
+    "lang": "id"
+}

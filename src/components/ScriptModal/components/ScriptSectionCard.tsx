@@ -7,6 +7,8 @@ import { ScriptSection } from '../utils/scriptParser'
 import { useToast } from '../../Toast'
 import { useConfirm } from '../../Confirm'
 import { AudioFile } from '@/lib/types/script'
+import { CREDIT_COSTS } from '@/lib/constants/credits'
+import CoinIcon from '@/components/icons/CoinIcon'
 
 interface ScriptSectionCardProps {
     section: ScriptSection
@@ -53,7 +55,7 @@ export default function ScriptSectionCard({
         // Show confirmation
         const confirmed = await confirm({
             title: 'Generate Audio TTS',
-            message: 'Bakal pakai 3 kredit buat generate audio TTS section ini. Lanjut?',
+            message: `Bakal pakai ${CREDIT_COSTS.TTS_SECTION} kredit buat generate audio TTS section ini. Lanjut?`,
             confirmText: 'Ya, Generate',
             cancelText: 'Batal'
         })
@@ -195,6 +197,61 @@ export default function ScriptSectionCard({
         }
     }
 
+    const handleDeleteAudio = async () => {
+        if (!authToken) {
+            showError('Login dulu ya')
+            return
+        }
+
+        // Show confirmation
+        const confirmed = await confirm({
+            title: 'Hapus Audio?',
+            message: 'Audio TTS untuk section ini akan dihapus. Kamu bisa generate ulang kapan aja.',
+            confirmText: 'Ya, Hapus',
+            cancelText: 'Batal'
+        })
+
+        if (!confirmed) return
+
+        try {
+            // Call API to delete audio for this section
+            const res = await fetch(`/api/scripts/${scriptId}/delete-section-audio`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${authToken}`
+                },
+                body: JSON.stringify({
+                    timestamp: section.timestamp
+                })
+            })
+
+            const data = await res.json()
+
+            if (!res.ok || !data.success) {
+                showError(data.message || data.error || 'Failed to delete audio')
+                return
+            }
+
+            // Clear local audio state
+            setAudioUrl(null)
+
+            // Refetch script to update parent
+            const scriptRes = await fetch(`/api/scripts/${scriptId}`, {
+                headers: { Authorization: `Bearer ${authToken}` }
+            })
+            const scriptData = await scriptRes.json()
+
+            if (onScriptUpdated && scriptData.script) {
+                onScriptUpdated(scriptData.script)
+            }
+
+            showSuccess('Audio deleted successfully')
+        } catch (error) {
+            showError('Network error. Please check your connection')
+        }
+    }
+
     return (
         <div className="border border-neutral-200 rounded-lg overflow-hidden hover:border-neutral-300 transition-colors bg-white">
             {/* Header with timestamp and edit button */}
@@ -295,7 +352,7 @@ export default function ScriptSectionCard({
                 {!isEditing && (
                     audioUrl ? (
                         <div className="pt-2">
-                            <AudioPlayer src={audioUrl} />
+                            <AudioPlayer src={audioUrl} existingAudio={existingAudio || undefined} onDelete={handleDeleteAudio} />
                         </div>
                     ) : (
                         <div className="pt-2">
@@ -313,7 +370,9 @@ export default function ScriptSectionCard({
                                     <>
                                         <VolumeHighOutline color="currentColor" width="14px" height="14px" />
                                         <span>Generate TTS</span>
-                                        <span className="text-[10px] text-neutral-500">(3 credits)</span>
+                                        <span className="inline-flex items-center gap-0.5 text-[10px] text-neutral-500">
+                                            ({CREDIT_COSTS.TTS_SECTION} <CoinIcon className="w-2.5 h-2.5" />)
+                                        </span>
                                     </>
                                 )}
                             </button>

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { WalletOutline, AddCircleOutline, LogoYen, LogoBitcoin } from 'react-ionicons'
+import { AddCircleOutline } from 'react-ionicons'
 import Link from 'next/link'
+import CoinIcon from '@/components/icons/CoinIcon'
 
 interface CreditBalanceProps {
     onTopUpClick?: () => void
@@ -77,7 +78,7 @@ export default function CreditBalance({ onTopUpClick }: CreditBalanceProps) {
                     <span className={`font-semibold text-sm ${creditColor}`}>
                         {credits ?? 0}
                     </span>
-                <img src="coin.png" alt="coin" className='w-4 h-4'/>
+                    <CoinIcon className="w-4 h-4" />
                 </div>
             </Link>
 

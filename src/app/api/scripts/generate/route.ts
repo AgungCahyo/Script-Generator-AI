@@ -4,6 +4,7 @@ import { getUserFromRequest } from '@/lib/api/auth'
 import { initializeGemini, getGeminiModel } from '@/lib/api/gemini'
 import { buildSystemPrompt } from '@/lib/prompts/builders'
 import { DEFAULT_MODEL } from '@/lib/constants/models'
+import { extractKeywords } from '@/lib/utils/keywords'
 import {
     DEFAULT_DURATION,
     DEFAULT_PLATFORM,
@@ -20,10 +21,16 @@ import {
 import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
 import { parseGeminiError, parseDatabaseError } from '@/lib/utils/errors'
 import { calculateScriptCost, checkCredits, deductCredits, getUserCredits, InsufficientCreditsError } from '@/lib/credits'
+import { checkRateLimit } from '@/lib/middleware/rate-limit'
+import { RATE_LIMITS } from '@/lib/constants/rate-limits'
 
 // POST: Generate script with streaming
 export async function POST(request: NextRequest) {
     try {
+        // Rate limiting check
+        const rateLimitResponse = await checkRateLimit(request, RATE_LIMITS.SCRIPT_GENERATE, 'user')
+        if (rateLimitResponse) return rateLimitResponse
+
         const user = await getUserFromRequest(request)
         if (!user) {
             return new Response(
@@ -74,10 +81,19 @@ export async function POST(request: NextRequest) {
             )
         }
 
-        // Calculate credit cost based on duration
+        // Validate model is in our allowed list (prevent client manipulation)
+        const { MODEL_TIERS } = require('@/lib/constants/credits')
+        if (!MODEL_TIERS.hasOwnProperty(selectedModel)) {
+            return new Response(
+                JSON.stringify({ error: 'Invalid AI model selected. Please choose from available models.' }),
+                { status: 400, headers: { 'Content-Type': 'application/json' } }
+            )
+        }
+
+        // Calculate credit cost based on model tier and duration
         // Handle duration as string (e.g., "3m") or number
         const durationValue = typeof duration === 'string' ? parseInt(duration) : duration
-        const creditCost = calculateScriptCost(durationValue)
+        const creditCost = calculateScriptCost(selectedModel, durationValue)
 
         // Check if user has enough credits
         const hasEnoughCredits = await checkCredits(user.uid, creditCost)
@@ -180,11 +196,17 @@ export async function POST(request: NextRequest) {
                         controller.enqueue(encoder.encode(chunkText))
                     }
 
-                    // Update database with complete script
+                    // Extract keywords from completed script
+                    const keywords = extractKeywords(fullText)
+                    console.log('🔍 Generated script - Extracted keywords:', keywords)
+                    console.log('📝 Script preview:', fullText.substring(0, 200))
+
+                    // Update database with complete script and keywords
                     await prisma.script.update({
                         where: { id: script.id },
                         data: {
                             script: fullText,
+                            keywords: keywords,  // Save extracted keywords
                             status: 'completed'
                         }
                     })

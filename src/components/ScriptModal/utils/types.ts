@@ -8,6 +8,7 @@ export interface Script {
     id: string
     topic: string
     script: string | null
+    keywords: string | null  // Extracted keywords for media search
     audioUrl: string | null
     audioFiles: AudioFile[] | null
     imageUrls: PexelsImage[] | null

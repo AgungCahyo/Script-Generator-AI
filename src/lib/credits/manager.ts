@@ -164,11 +164,27 @@ export async function getCreditHistory(
 }
 
 /**
- * Calculate credit cost for script generation
+ * Calculate credit cost for script generation (TIERED by model)
  */
-export function calculateScriptCost(durationMinutes: number): number {
-    const { CREDIT_COSTS } = require('@/lib/constants/credits')
-    return CREDIT_COSTS.SCRIPT_BASE + (durationMinutes * CREDIT_COSTS.SCRIPT_PER_MINUTE)
+export function calculateScriptCost(
+    model: string,
+    durationMinutes: number
+): number {
+    const { CREDIT_COSTS, MODEL_TIERS } = require('@/lib/constants/credits')
+
+    // Get tier for the model (default to tier 2 if unknown)
+    const tier = MODEL_TIERS[model] || 2
+
+    // Determine base cost based on tier
+    const baseCost =
+        tier === 1 ? CREDIT_COSTS.SCRIPT_TIER_1 :  // Economy: 20 credits
+            tier === 2 ? CREDIT_COSTS.SCRIPT_TIER_2 :  // Standard: 30 credits
+                CREDIT_COSTS.SCRIPT_TIER_3    // Premium: 50 credits
+
+    // Add duration cost
+    const durationCost = durationMinutes * CREDIT_COSTS.SCRIPT_PER_MINUTE
+
+    return baseCost + durationCost
 }
 
 /**

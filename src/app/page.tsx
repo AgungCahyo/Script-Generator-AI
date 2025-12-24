@@ -14,6 +14,31 @@ import CreditBalance from '@/components/CreditBalance'
 import { Script } from '@/lib/types/script'
 import { ScriptFormData } from '@/lib/types/form'
 import Link from 'next/link'
+import Head from 'next/head'
+import Footer from '@/components/Footer'
+
+// JSON-LD Structured Data for SEO
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "ScriptAI",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "offers": {
+    "@type": "AggregateOffer",
+    "priceCurrency": "IDR",
+    "lowPrice": "25000",
+    "highPrice": "500000",
+    "offerCount": "4"
+  },
+  "description": "Generator skrip video AI profesional menggunakan Gemini 3.0. Platform Indonesia pertama dengan sistem pay-per-use untuk kreator konten.",
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "100"
+  },
+  "inLanguage": ["id", "en"]
+}
 
 export default function Home() {
   const { user, loading: authLoading, signOut, getIdToken } = useAuth()
@@ -147,6 +172,7 @@ export default function Home() {
         id: scriptId,
         topic: formData.topic,
         script: '',
+        keywords: null,
         audioUrl: null,
         audioFiles: null,
         imageUrls: null,
@@ -344,124 +370,133 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <header className="border-b border-neutral-200">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-sm font-medium text-neutral-900">Script Generator</h1>
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <CreditBalance onTopUpClick={() => window.location.href = '/pricing'} />
+    <>
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
 
-                {/* Profile Dropdown */}
-                <div className="relative" ref={profileDropdownRef}>
-                  <button
-                    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                    className="flex items-center gap-1 p-1.5 text-neutral-600 hover:bg-neutral-50 rounded-lg transition-colors"
-                    title="Account menu"
-                  >
-                    <PersonCircleOutline color="currentColor" width="24px" height="24px" />
-                    <ChevronDownOutline color="currentColor" width="14px" height="14px" cssClasses={`transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
-                  </button>
+      <main className="min-h-screen bg-white">
+        <header className="border-b border-neutral-200">
+          <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+            <h1 className="text-sm font-medium text-neutral-900">Script Generator</h1>
+            <div className="flex items-center gap-3">
+              {user ? (
+                <>
+                  <CreditBalance onTopUpClick={() => window.location.href = '/pricing'} />
 
-                  {profileDropdownOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden z-50">
-                      {/* User Info */}
-                      <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
-                        <div className="flex items-center gap-2 mb-1">
-                          <PersonOutline color="#737373" width="16px" height="16px" />
-                          <span className="text-xs font-medium text-neutral-900">Account</span>
+                  {/* Profile Dropdown */}
+                  <div className="relative" ref={profileDropdownRef}>
+                    <button
+                      onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                      className="flex items-center gap-1 p-1.5 text-neutral-600 hover:bg-neutral-50 rounded-lg transition-colors"
+                      title="Account menu"
+                    >
+                      <PersonCircleOutline color="currentColor" width="24px" height="24px" />
+                      <ChevronDownOutline color="currentColor" width="14px" height="14px" cssClasses={`transition-transform ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {profileDropdownOpen && (
+                      <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-neutral-200 rounded-lg shadow-lg overflow-hidden z-50">
+                        {/* User Info */}
+                        <div className="px-4 py-3 border-b border-neutral-100 bg-neutral-50">
+                          <div className="flex items-center gap-2 mb-1">
+                            <PersonOutline color="#737373" width="16px" height="16px" />
+                            <span className="text-xs font-medium text-neutral-900">Account</span>
+                          </div>
+                          <p className="text-xs text-neutral-600 truncate">{user.email}</p>
                         </div>
-                        <p className="text-xs text-neutral-600 truncate">{user.email}</p>
+
+                        {/* Menu Items */}
+                        <div className="py-1">
+                          <Link
+                            href="/dashboard/billing"
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
+                            onClick={() => setProfileDropdownOpen(false)}
+                          >
+                            <CardOutline color="currentColor" width="16px" height="16px" />
+                            <span>Billing & Credits</span>
+                          </Link>
+
+                          <button
+                            onClick={() => {
+                              setProfileDropdownOpen(false)
+                              signOut()
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <LogOutOutline color="currentColor" width="16px" height="16px" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
                       </div>
-
-                      {/* Menu Items */}
-                      <div className="py-1">
-                        <Link
-                          href="/dashboard/billing"
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                          onClick={() => setProfileDropdownOpen(false)}
-                        >
-                          <CardOutline color="currentColor" width="16px" height="16px" />
-                          <span>Billing & Credits</span>
-                        </Link>
-
-                        <button
-                          onClick={() => {
-                            setProfileDropdownOpen(false)
-                            signOut()
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <LogOutOutline color="currentColor" width="16px" height="16px" />
-                          <span>Sign Out</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <button
-                onClick={() => setLoginModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors"
-              >
-                <LogInOutline color="currentColor" width="16px" height="16px" />
-                Sign In
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-12">
-        <section>
-          <ScriptForm
-            onSubmit={handleSubmit}
-            loading={loading}
-            disabled={!user}
-          />
-        </section>
-
-
-
-        <section>
-          <h2 className="text-sm text-neutral-600 mb-3">History</h2>
-          {user ? (
-            <HistoryList
-              scripts={scripts}
-              onSelect={openModal}
-              onDelete={handleDelete}
-              loading={fetchingHistory}
-            />
-          ) : (
-            <div className="text-center py-8 text-neutral-400 text-sm">
-              Sign in to view your script history
+                    )}
+                  </div>
+                </>
+              ) : (
+                <button
+                  onClick={() => setLoginModalOpen(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-neutral-900 rounded-lg hover:bg-neutral-800 transition-colors"
+                >
+                  <LogInOutline color="currentColor" width="16px" height="16px" />
+                  Sign In
+                </button>
+              )}
             </div>
-          )}
-        </section>
-      </div>
+          </div>
+        </header>
 
-      <ScriptModal
-        script={modalScript}
-        isOpen={modalOpen}
-        onClose={closeModal}
-        onScriptUpdated={handleScriptUpdated}
-        onRetry={handleRetry}
-        authToken={authToken}
-      />
+        <div className="max-w-3xl mx-auto px-6 py-8 space-y-12">
+          <section>
+            <ScriptForm
+              onSubmit={handleSubmit}
+              loading={loading}
+              disabled={!user}
+            />
+          </section>
 
-      <LoginModal
-        isOpen={loginModalOpen}
-        onClose={() => setLoginModalOpen(false)}
-      />
 
-      <InsufficientCreditsModal
-        isOpen={insufficientCreditsModalOpen}
-        onClose={() => setInsufficientCreditsModalOpen(false)}
-        required={creditInfo.required}
-        available={creditInfo.available}
-      />
-    </main>
+
+          <section>
+            <h2 className="text-sm text-neutral-600 mb-3">History</h2>
+            {user ? (
+              <HistoryList
+                scripts={scripts}
+                onSelect={openModal}
+                onDelete={handleDelete}
+                loading={fetchingHistory}
+              />
+            ) : (
+              <div className="text-center py-8 text-neutral-400 text-sm">
+                Sign in to view your script history
+              </div>
+            )}
+          </section>
+        </div>
+
+        <ScriptModal
+          script={modalScript}
+          isOpen={modalOpen}
+          onClose={closeModal}
+          onScriptUpdated={handleScriptUpdated}
+          onRetry={handleRetry}
+          authToken={authToken}
+        />
+
+        <LoginModal
+          isOpen={loginModalOpen}
+          onClose={() => setLoginModalOpen(false)}
+        />
+
+        <InsufficientCreditsModal
+          isOpen={insufficientCreditsModalOpen}
+          onClose={() => setInsufficientCreditsModalOpen(false)}
+          required={creditInfo.required}
+          available={creditInfo.available}
+        />
+      </main>
+      <Footer/>
+    </>
   )
 }

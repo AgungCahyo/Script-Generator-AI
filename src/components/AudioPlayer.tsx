@@ -7,16 +7,20 @@ import {
     VolumeHighOutline,
     VolumeMuteOutline,
     DownloadOutline,
-    TrashOutline
+    TrashOutline,
+    Reload
 } from 'react-ionicons'
 import { useAudioContext } from '@/contexts/AudioContext'
+import { AudioFile } from '@/lib/types/script'
 
 interface AudioPlayerProps {
     src: string
     onDelete?: () => void
+    selectedVoice?: string
+    existingAudio?: AudioFile
 }
 
-export default function AudioPlayer({ src, onDelete }: AudioPlayerProps) {
+export default function AudioPlayer({ src, onDelete, existingAudio }: AudioPlayerProps) {
     const audioRef = useRef<HTMLAudioElement>(null)
     const playerIdRef = useRef<string>(`audio-${Math.random().toString(36).substr(2, 9)}`)
     const audioContext = useAudioContext()
@@ -28,8 +32,12 @@ export default function AudioPlayer({ src, onDelete }: AudioPlayerProps) {
     const [playbackRate, setPlaybackRate] = useState(1)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [isDownloading, setIsDownloading] = useState(false)
     const animationRef = useRef<number | null>(null)
     const lastUpdateRef = useRef<number>(0)
+    const [audioUrl, setAudioUrl] = useState<string | null>(existingAudio?.audioUrl || null)
+
 
     // Smooth slider animation using requestAnimationFrame with throttling
     useEffect(() => {
@@ -194,6 +202,27 @@ export default function AudioPlayer({ src, onDelete }: AudioPlayerProps) {
         return src
     }
 
+    const handleDelete = async () => {
+        if (!onDelete || isDeleting) return
+        setIsDeleting(true)
+        try {
+            await onDelete()
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    const handleDownload = async () => {
+        if (isDownloading) return
+        setIsDownloading(true)
+        try {
+            // Small delay to show loading state
+            await new Promise(resolve => setTimeout(resolve, 300))
+        } finally {
+            setIsDownloading(false)
+        }
+    }
+
     return (
         <div className="bg-neutral-50 rounded-lg p-2.5 sm:p-4 border border-neutral-200">
             <audio
@@ -202,6 +231,7 @@ export default function AudioPlayer({ src, onDelete }: AudioPlayerProps) {
                 preload="metadata"
                 crossOrigin="anonymous"
             />
+
 
             {/* Error Message */}
             {error && (
@@ -292,26 +322,51 @@ export default function AudioPlayer({ src, onDelete }: AudioPlayerProps) {
                     ))}
                 </div>
                 <div className='flex items-center gap-1.5 sm:gap-2'>
+                    {/* Voice ID Badge */}
+                    {existingAudio?.voiceId && (
+                        <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-neutral-100 text-neutral-700 border border-neutral-200">
+                                {existingAudio.voiceId}
+                            </span>
+                        </div>
+                    )}
+
 
                     {/* Download Button */}
                     <a
                         href={src}
                         download
-                        className="shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 rounded transition-all active:scale-95 touch-manipulation"
+                        onClick={handleDownload}
+                        className={`shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium rounded transition-all touch-manipulation ${isDownloading
+                            ? 'text-neutral-400 cursor-not-allowed'
+                            : 'text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 active:scale-95'
+                            }`}
                     >
-                        <DownloadOutline color="currentColor" width="14px" height="14px" />
-                        <span className="hidden sm:inline">Download</span>
+                        {isDownloading ? (
+                            <Reload color="currentColor" width="14px" height="14px" cssClasses="animate-spin" />
+                        ) : (
+                            <DownloadOutline color="currentColor" width="14px" height="14px" />
+                        )}
+                        <span className="hidden sm:inline">{isDownloading ? 'Downloading...' : 'Download'}</span>
                     </a>
 
                     {/* Delete Button */}
                     {onDelete && (
                         <button
-                            onClick={onDelete}
-                            className="shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 rounded transition-all active:scale-95 touch-manipulation"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className={`shrink-0 flex items-center justify-center gap-1 px-2 py-1 text-[10px] sm:text-xs font-medium rounded transition-all touch-manipulation ${isDeleting
+                                ? 'text-neutral-400 cursor-not-allowed'
+                                : 'text-neutral-600 hover:bg-neutral-200 active:bg-neutral-300 active:scale-95'
+                                }`}
                             title="Hapus Audio"
                         >
-                            <TrashOutline color="currentColor" width="14px" height="14px" />
-                            <span className="hidden sm:inline">Hapus</span>
+                            {isDeleting ? (
+                                <Reload color="currentColor" width="14px" height="14px" cssClasses="animate-spin" />
+                            ) : (
+                                <TrashOutline color="currentColor" width="14px" height="14px" />
+                            )}
+                            <span className="hidden sm:inline">{isDeleting ? 'Deleting...' : 'Hapus'}</span>
                         </button>
                     )}
                 </div>

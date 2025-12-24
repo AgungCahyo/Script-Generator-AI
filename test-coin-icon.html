@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coin Icon Preview</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 40px;
+            background: #fafafa;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #e5e5e5;
+        }
+        h1 {
+            color: #171717;
+            margin-bottom: 30px;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin: 30px 0;
+        }
+        .icon-box {
+            text-align: center;
+            padding: 30px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .icon-box h3 {
+            color: #525252;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .sizes {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .size-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .size-label {
+            font-size: 11px;
+            color: #737373;
+        }
+        .usage-examples {
+            margin-top: 40px;
+            padding: 20px;
+            background: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+        }
+        .usage-examples h3 {
+            color: #171717;
+            margin-bottom: 20px;
+        }
+        .example {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            background: #fafafa;
+            border-radius: 6px;
+        }
+        .credit-text {
+            font-weight: 600;
+            color: #171717;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🪙 New Coin Icon Design</h1>
+        
+        <div class="comparison">
+            <div class="icon-box">
+                <h3>OLD DESIGN (Yellow/Gold)</h3>
+                <div class="sizes">
+                    <div class="size-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" fill="#FCD34D" stroke="#F59E0B" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="7.5" fill="#FBBF24" stroke="#F59E0B" stroke-width="1"/>
+                            <text x="12" y="16" font-size="10" font-weight="bold" fill="#92400E" text-anchor="middle" font-family="system-ui">C</text>
+                        </svg>
+                        <span class="size-label">16px</span>
+                    </div>
+                    <div class="size-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" fill="#FCD34D" stroke="#F59E0B" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="7.5" fill="#FBBF24" stroke="#F59E0B" stroke-width="1"/>
+                            <text x="12" y="16" font-size="10" font-weight="bold" fill="#92400E" text-anchor="middle" font-family="system-ui">C</text>
+                        </svg>
+                        <span class="size-label">20px</span>
+                    </div>
+                    <div class="size-item">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <circle cx="12" cy="12" r="10" fill="#FCD34D" stroke="#F59E0B" stroke-width="1.5"/>
+                            <circle cx="12" cy="12" r="7.5" fill="#FBBF24" stroke="#F59E0B" stroke-width="1"/>
+                            <text x="12" y="16" font-size="10" font-weight="bold" fill="#92400E" text-anchor="middle" font-family="system-ui">C</text>
+                        </svg>
+                        <span class="size-label">32px</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="icon-box">
+                <h3>NEW DESIGN (Modern Neutral)</h3>
+                <div class="sizes">
+                    <div class="size-item">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <defs>
+                                <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#525252;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#171717;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="12" cy="12" r="9.5" fill="url(#grad1)" stroke="#a3a3a3" stroke-width="1"/>
+                            <circle cx="12" cy="12" r="7" fill="none" stroke="#737373" stroke-width="0.5" opacity="0.3"/>
+                            <text x="12" y="16.5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="system-ui">C</text>
+                            <circle cx="9" cy="9" r="2" fill="#ffffff" opacity="0.15"/>
+                        </svg>
+                        <span class="size-label">16px</span>
+                    </div>
+                    <div class="size-item">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <defs>
+                                <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#525252;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#171717;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="12" cy="12" r="9.5" fill="url(#grad2)" stroke="#a3a3a3" stroke-width="1"/>
+                            <circle cx="12" cy="12" r="7" fill="none" stroke="#737373" stroke-width="0.5" opacity="0.3"/>
+                            <text x="12" y="16.5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="system-ui">C</text>
+                            <circle cx="9" cy="9" r="2" fill="#ffffff" opacity="0.15"/>
+                        </svg>
+                        <span class="size-label">20px</span>
+                    </div>
+                    <div class="size-item">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                            <defs>
+                                <linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#525252;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#171717;stop-opacity:1" />
+                                </linearGradient>
+                            </defs>
+                            <circle cx="12" cy="12" r="9.5" fill="url(#grad3)" stroke="#a3a3a3" stroke-width="1"/>
+                            <circle cx="12" cy="12" r="7" fill="none" stroke="#737373" stroke-width="0.5" opacity="0.3"/>
+                            <text x="12" y="16.5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="system-ui">C</text>
+                            <circle cx="9" cy="9" r="2" fill="#ffffff" opacity="0.15"/>
+                        </svg>
+                        <span class="size-label">32px</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="usage-examples">
+            <h3>Usage Examples</h3>
+            
+            <div class="example">
+                <span class="credit-text">100</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <defs>
+                        <linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#525252;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#171717;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="12" cy="12" r="9.5" fill="url(#grad4)" stroke="#a3a3a3" stroke-width="1"/>
+                    <circle cx="12" cy="12" r="7" fill="none" stroke="#737373" stroke-width="0.5" opacity="0.3"/>
+                    <text x="12" y="16.5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="system-ui">C</text>
+                    <circle cx="9" cy="9" r="2" fill="#ffffff" opacity="0.15"/>
+                </svg>
+                <span style="color: #737373; font-size: 14px;">Credit Balance</span>
+            </div>
+
+            <div class="example">
+                <span style="font-size: 13px; color: #525252;">Generate Script (30</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                    <defs>
+                        <linearGradient id="grad5" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#525252;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#171717;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="12" cy="12" r="9.5" fill="url(#grad5)" stroke="#a3a3a3" stroke-width="1"/>
+                    <circle cx="12" cy="12" r="7" fill="none" stroke="#737373" stroke-width="0.5" opacity="0.3"/>
+                    <text x="12" y="16.5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="system-ui">C</text>
+                    <circle cx="9" cy="9" r="2" fill="#ffffff" opacity="0.15"/>
+                </svg>
+                <span style="font-size: 13px; color: #525252;">)</span>
+            </div>
+
+            <div class="example">
+                <span style="font-size: 13px; color: #525252;">You need</span>
+                <strong style="display: inline-flex; align-items: center; gap: 2px;">50
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                        <defs>
+                            <linearGradient id="grad6" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#525252;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#171717;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle cx="12" cy="12" r="9.5" fill="url(#grad6)" stroke="#a3a3a3" stroke-width="1"/>
+                        <circle cx="12" cy="12" r="7" fill="none" stroke="#737373" stroke-width="0.5" opacity="0.3"/>
+                        <text x="12" y="16.5" font-size="11" font-weight="700" fill="#ffffff" text-anchor="middle" font-family="system-ui">C</text>
+                        <circle cx="9" cy="9" r="2" fill="#ffffff" opacity="0.15"/>
+                    </svg>
+                </strong>
+                <span style="font-size: 13px; color: #525252;">credits</span>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 8px; border-left: 4px solid #171717;">
+            <h4 style="margin: 0 0 10px 0; color: #171717;">Design Changes</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #525252; font-size: 14px; line-height: 1.8;">
+                <li>Changed from <strong>yellow/gold</strong> to <strong>neutral gray gradient</strong></li>
+                <li>Matches the project's minimalist black/neutral color scheme</li>
+                <li>Added subtle gradient (gray-600 → gray-900) for depth</li>
+                <li>White 'C' letter for better contrast and readability</li>
+                <li>Added subtle shine effect for modern 3D look</li>
+                <li>More professional and consistent with overall design</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

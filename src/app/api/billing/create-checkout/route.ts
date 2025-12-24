@@ -1,5 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromRequest } from '@/lib/api/auth'
+import { CREDIT_PACKAGES } from '@/lib/constants/credits'
+
+// Helper to get package price based on credit amount
+// Note: credits should be validated before calling this function
+function getPackagePrice(credits: number): number | null {
+    const packages = CREDIT_PACKAGES as Record<string, { credits: number; priceIDR: number }>
+
+    if (credits === packages.STARTER.credits) return packages.STARTER.priceIDR
+    if (credits === packages.SMALL.credits) return packages.SMALL.priceIDR
+    if (credits === packages.MEDIUM.credits) return packages.MEDIUM.priceIDR
+    if (credits === packages.LARGE.credits) return packages.LARGE.priceIDR
+
+    return null // Invalid package size
+}
 
 // POST: Create payment checkout (trigger n8n webhook)
 export async function POST(request: NextRequest) {
@@ -17,12 +31,43 @@ export async function POST(request: NextRequest) {
         const { credits } = body
         // credits: number of credits to purchase
 
+        // Validate credits is a number and positive
         if (!credits || typeof credits !== 'number' || credits <= 0) {
             return NextResponse.json(
                 { error: 'Invalid credits amount. Must be a positive number.' },
                 { status: 400 }
             )
         }
+
+        // Validate it matches our available packages
+        const validAmounts = [
+            CREDIT_PACKAGES.STARTER.credits,
+            CREDIT_PACKAGES.SMALL.credits,
+            CREDIT_PACKAGES.MEDIUM.credits,
+            CREDIT_PACKAGES.LARGE.credits,
+        ] as const
+
+        if (!validAmounts.includes(credits as any)) {
+            return NextResponse.json(
+                { error: `Invalid package size. Available: ${validAmounts.join(', ')} credits` },
+                { status: 400 }
+            )
+        }
+
+        // TypeScript now knows credits is one of the valid amounts
+        const validatedCredits = credits as 100 | 500 | 1000 | 2500
+
+        // Get package price (already validated above, so this won't be null)
+        const amount = getPackagePrice(validatedCredits)
+
+        if (!amount) {
+            return NextResponse.json(
+                { error: 'Invalid package configuration' },
+                { status: 500 }
+            )
+        }
+
+        const description = `${credits} Credits`
 
         // Get n8n payment webhook URL
         const n8nWebhookUrl = process.env.N8N_PAYMENT_WEBHOOK_URL
@@ -33,11 +78,6 @@ export async function POST(request: NextRequest) {
                 { status: 500 }
             )
         }
-
-        // Calculate price (Rp 2,000 per credit)
-        const PRICE_PER_CREDIT = 2000
-        const amount = credits * PRICE_PER_CREDIT
-        const description = `${credits} Credits`
 
         // Construct callback URL (trim to remove any whitespace/newlines)
         const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').trim()

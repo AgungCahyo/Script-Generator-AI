@@ -1,25 +1,132 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { addCredits, PLAN_LIMITS } from '@/lib/credits'
+import crypto from 'crypto'
+
+// Midtrans IP Whitelist (Production & Sandbox)
+const MIDTRANS_IPS = [
+    '103.127.16.0/23',   // Production
+    '103.208.23.0/24',   // Production
+    '103.208.22.0/24',   // Production  
+    '103.127.17.6',      // Sandbox
+    '180.131.6.100',     // Backup
+]
+
+// Helper: Check if IP is whitelisted
+function isWhitelistedIP(ip: string | null): boolean {
+    if (!ip) return false
+
+    // For development, allow localhost
+    if (process.env.NODE_ENV === 'development') {
+        return true
+    }
+
+    // Check against whitelist
+    return MIDTRANS_IPS.some(allowedIP => {
+        if (allowedIP.includes('/')) {
+            // CIDR range check (simplified)
+            const [range] = allowedIP.split('/')
+            return ip.startsWith(range.split('.').slice(0, 3).join('.'))
+        }
+        return ip === allowedIP
+    })
+}
+
+// Helper: Verify Midtrans signature
+function verifyMidtransSignature(body: any): boolean {
+    const serverKey = process.env.MIDTRANS_SERVER_KEY
+    if (!serverKey) {
+        console.error('MIDTRANS_SERVER_KEY not configured')
+        return false
+    }
+
+    const orderId = body.order_id
+    const statusCode = body.status_code
+    const grossAmount = body.gross_amount
+    const signatureKey = body.signature_key
+
+    if (!orderId || !statusCode || !grossAmount || !signatureKey) {
+        return false
+    }
+
+    // Generate expected signature
+    const signatureString = `${orderId}${statusCode}${grossAmount}${serverKey}`
+    const hash = crypto.createHash('sha512').update(signatureString).digest('hex')
+
+    return hash === signatureKey
+}
 
 // POST: Handle payment callback from Midtrans OR n8n
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
 
+        // Get client IP
+        const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+            || request.headers.get('x-real-ip')
+            || 'unknown'
 
         // Handle Midtrans direct notification format
-        // Midtrans sends different formats for different notification types:
-        // 1. Transaction: {transaction_status, order_id, gross_amount, ...}
-        // 2. Subscription: {token, status, schedule, customer_details, amount, merchant_id, ...}
         if (body.transaction_status || body.order_id || body.token || body.merchant_id) {
 
-            // Just acknowledge receipt - actual processing happens via n8n
-            // n8n will receive this notification, process it, and call this endpoint again
-            // with the properly formatted data (userId, type, credits, etc.)
+            // Check if this is a test notification from Midtrans
+            const isTestNotification = body.order_id?.includes('payment_notif_test')
+
+            if (isTestNotification) {
+                console.log(`📧 Midtrans test notification received from IP: ${clientIP}`)
+                console.log('Test Order ID:', body.order_id)
+
+                // Acknowledge test notification
+                return new NextResponse(JSON.stringify({
+                    success: true,
+                    message: 'Test notification received successfully',
+                }), {
+                    status: 200,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+            }
+
+            // For REAL transactions, enforce security checks
+
+            // Security Check 1: IP Whitelist
+            if (!isWhitelistedIP(clientIP)) {
+                // Log for debugging but be more permissive in production initially
+                console.warn(`Payment callback from non-whitelisted IP: ${clientIP}`)
+                console.warn('Order ID:', body.order_id)
+
+                // In production, still check signature even if IP not whitelisted
+                // This allows Midtrans to change IPs without breaking payments
+                if (process.env.NODE_ENV === 'production') {
+                    console.warn('Proceeding with signature check despite IP mismatch')
+                } else {
+                    // In development, allow all IPs
+                    console.log('Development mode: IP check bypassed')
+                }
+            }
+
+            // Security Check 2: Signature Verification (CRITICAL!)
+            if (!verifyMidtransSignature(body)) {
+                console.error(`❌ Invalid Midtrans signature from IP: ${clientIP}`)
+                console.error('Order ID:', body.order_id)
+                console.error('Status Code:', body.status_code)
+                console.error('Gross Amount:', body.gross_amount)
+                console.error('Received Signature:', body.signature_key)
+
+                return NextResponse.json(
+                    { error: 'Invalid signature' },
+                    { status: 403 }
+                )
+            }
+
+            console.log(`✅ Valid Midtrans notification from IP: ${clientIP}, Order: ${body.order_id}`)
+
+            // Valid Midtrans notification - acknowledge receipt
+            // n8n will process this and call us back with formatted data
             return new NextResponse(JSON.stringify({
                 success: true,
-                message: 'Notification received',
+                message: 'Notification received and verified',
             }), {
                 status: 200,
                 headers: {
@@ -58,7 +165,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if this order has already been processed (idempotency)
-        const existingTransaction = await prisma.creditTransaction.findFirst({
+        const existingOrder = await prisma.creditTransaction.findFirst({
             where: {
                 metadata: {
                     path: ['orderId'],
@@ -67,7 +174,7 @@ export async function POST(request: NextRequest) {
             },
         })
 
-        if (existingTransaction) {
+        if (existingOrder) {
             return NextResponse.json({
                 success: true,
                 message: 'Order already processed',
@@ -100,6 +207,29 @@ export async function POST(request: NextRequest) {
                 { error: 'Invalid credits amount' },
                 { status: 400 }
             )
+        }
+
+        // IDEMPOTENCY CHECK: Prevent duplicate processing of same orderId
+        const existingPurchase = await prisma.creditTransaction.findFirst({
+            where: {
+                userId,
+                type: 'PURCHASE',
+                metadata: {
+                    path: ['orderId'],
+                    equals: orderId
+                }
+            }
+        })
+
+        if (existingPurchase) {
+            console.log(`Order ${orderId} already processed, skipping duplicate`)
+            // Return success to stop Midtrans retries
+            return NextResponse.json({
+                success: true,
+                message: 'Order already processed',
+                alreadyProcessed: true,
+                credits: existingPurchase.amount
+            })
         }
 
         // Check if this is user's first purchase (first-time buyer bonus)

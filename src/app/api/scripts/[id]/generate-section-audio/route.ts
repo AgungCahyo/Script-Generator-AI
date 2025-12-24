@@ -3,6 +3,9 @@ import prisma from '@/lib/prisma'
 import { getUserFromRequest } from '@/lib/api/auth'
 import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
 import { CREDIT_COSTS, checkCredits, deductCredits, getUserCredits, InsufficientCreditsError } from '@/lib/credits'
+import { checkRateLimit } from '@/lib/middleware/rate-limit'
+import { RATE_LIMITS } from '@/lib/constants/rate-limits'
+import { devLog } from '@/lib/utils/webhook-security'
 
 // POST: Trigger TTS generation for a single script section
 export async function POST(
@@ -10,6 +13,10 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        // Rate limiting check
+        const rateLimitResponse = await checkRateLimit(request, RATE_LIMITS.TTS_GENERATE, 'user')
+        if (rateLimitResponse) return rateLimitResponse
+
         const user = await getUserFromRequest(request)
         if (!user) {
             return NextResponse.json({ error: ERROR_MESSAGES.UNAUTHORIZED }, { status: 401 })
@@ -19,9 +26,7 @@ export async function POST(
         const body = await request.json()
         const { sectionIndex, narasiText, timestamp, voiceId } = body
 
-        // Debug: Log what we received
-        console.log('API /generate-section-audio received body:', body)
-        console.log('Extracted voiceId:', voiceId)
+        devLog('API /generate-section-audio received:', { sectionIndex, timestamp, voiceId })
 
         if (typeof sectionIndex !== 'number' || !narasiText || !timestamp) {
             return NextResponse.json(
@@ -48,7 +53,7 @@ export async function POST(
                 error: 'Insufficient credits',
                 required: creditCost,
                 available: currentCredits,
-                message: `TTS generation requires ${creditCost} credits. You have ${currentCredits}.`
+                message: `TTS generation requires ${creditCost} credits.You have ${currentCredits}.`
             }, { status: 402 })
         }
 
@@ -57,7 +62,7 @@ export async function POST(
             await deductCredits(
                 user.uid,
                 creditCost,
-                `TTS for section: ${timestamp}`,
+                `TTS for section: ${timestamp} `,
                 { scriptId: id, sectionIndex, timestamp }
             )
         } catch (error) {
@@ -77,10 +82,10 @@ export async function POST(
             return NextResponse.json({ error: ERROR_MESSAGES.AUDIO_SERVICE_UNAVAILABLE }, { status: 500 })
         }
 
-        const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://web-trigger.vercel.app'}/api/scripts/callback`
+        const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://web-trigger.vercel.app'} /api/scripts / callback`
 
         // Create a mini-script with just this section for TTS processing
-        const sectionScript = `${timestamp}\nNARASI: ${narasiText}`
+        const sectionScript = `${timestamp} \nNARASI: ${narasiText} `
 
         // Prepare webhook payload
         const webhookPayload = {
@@ -91,7 +96,8 @@ export async function POST(
         }
 
         // Debug: Log what we're sending to n8n
-        console.log('Sending to TTS webhook:', JSON.stringify(webhookPayload, null, 2))
+        devLog('Triggering TTS webhook for section', sectionIndex)
+
 
         fetch(ttsWebhookUrl, {
             method: 'POST',

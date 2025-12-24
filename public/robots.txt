@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /pricing
+
+# Block API routes from indexing
+Disallow: /api/
+
+# Block auth pages if you have them
+Disallow: /auth/
+
+# Sitemap location
+Sitemap: https://web-trigger.vercel.app/sitemap.xml

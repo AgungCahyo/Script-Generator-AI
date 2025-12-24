@@ -45,10 +45,24 @@ function getAdminStorage(): Storage {
 export async function verifyToken(token: string) {
     try {
         const auth = getAdminAuth()
-        const decodedToken = await auth.verifyIdToken(token)
-        return { uid: decodedToken.uid, email: decodedToken.email }
-    } catch (error) {
-        console.error('Error verifying token:', error)
+        const decodedToken = await auth.verifyIdToken(token, true) // checkRevoked = true
+        return {
+            uid: decodedToken.uid,
+            email: decodedToken.email,
+            error: null
+        }
+    } catch (error: any) {
+        console.error('Error verifying token:', error.code || error.message)
+
+        // Return null for compatibility, but log specific error
+        if (error.code === 'auth/id-token-expired') {
+            console.warn('Token expired - user needs to re-authenticate')
+        } else if (error.code === 'auth/id-token-revoked') {
+            console.warn('Token revoked - user was logged out')
+        } else if (error.code === 'auth/argument-error') {
+            console.warn('Invalid token format')
+        }
+
         return null
     }
 }

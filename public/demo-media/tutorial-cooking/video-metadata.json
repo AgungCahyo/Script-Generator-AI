@@ -1,0 +1,35 @@
+[
+  {
+    "id": 35287434,
+    "width": 1296,
+    "height": 2304,
+    "duration": 14,
+    "image": "https://images.pexels.com/videos/35287434/board-comfort-cooking-cuisine-35287434.jpeg?auto=compress&cs=tinysrgb&fit=crop&h=1200&w=630",
+    "video_files": [
+      {
+        "quality": null,
+        "width": 360,
+        "height": 640,
+        "link": "https://videos.pexels.com/video-files/35287434/14949506_360_640_25fps.mp4"
+      },
+      {
+        "quality": null,
+        "width": 540,
+        "height": 960,
+        "link": "https://videos.pexels.com/video-files/35287434/14949507_540_960_25fps.mp4"
+      },
+      {
+        "quality": null,
+        "width": 720,
+        "height": 1280,
+        "link": "https://videos.pexels.com/video-files/35287434/14949508_720_1280_25fps.mp4"
+      },
+      {
+        "quality": null,
+        "width": 1080,
+        "height": 1920,
+        "link": "https://videos.pexels.com/video-files/35287434/14949509_1080_1920_25fps.mp4"
+      }
+    ]
+  }
+]

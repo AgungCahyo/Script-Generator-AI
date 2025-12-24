@@ -74,47 +74,102 @@ export default function ScriptModal({
 
         // Store initial image count
         const initialImageCount = (script.imageUrls as any[])?.length || 0
+        const isAI = source === 'ai'
 
-        await fetchImages(
-            keywords,
-            count,
-            orientation,
-            source,
-            async (images) => {
-                // Start polling for updated images (callback updates DB async)
-                let pollAttempts = 0
-                const maxAttempts = 15 // Poll for max 30 seconds
+        // For AI images, make multiple API calls (1 per request)
+        if (isAI) {
+            for (let i = 0; i < count; i++) {
+                await fetchImages(
+                    keywords,
+                    1,  // Always 1 for AI
+                    orientation,
+                    source,
+                    async (images) => {
+                        // Success - AI request initiated
+                    },
+                    (error) => showError(error)
+                )
+                // Small delay between requests
+                if (i < count - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 500))
+                }
+            }
 
-                const pollForImages = setInterval(async () => {
-                    try {
-                        const res = await fetch(`/api/scripts/${script.id}`, {
-                            headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
-                        })
-                        const data = await res.json()
+            // Start polling after ALL requests sent
+            let pollAttempts = 0
+            const maxAttempts = 60 // 2 minutes for AI
 
-                        if (data.script) {
-                            const newImageCount = (data.script.imageUrls as any[])?.length || 0
+            const pollForImages = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/scripts/${script.id}`, {
+                        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                    })
+                    const data = await res.json()
 
-                            // Check if new images appeared
-                            if (newImageCount > initialImageCount) {
-                                clearInterval(pollForImages)
-                                onScriptUpdated(data.script)
-                                showSuccess(`Fetched ${newImageCount - initialImageCount} images successfully`)
-                                return
-                            }
-                        }
+                    if (data.script) {
+                        const newImageCount = (data.script.imageUrls as any[])?.length || 0
 
-                        pollAttempts++
-                        if (pollAttempts >= maxAttempts) {
+                        // Check if new images appeared
+                        if (newImageCount > initialImageCount) {
                             clearInterval(pollForImages)
-                            showWarning('Images fetch timed out. Please refresh to see results.')
+                            onScriptUpdated(data.script)
+                            showSuccess(`${newImageCount - initialImageCount} gambar AI berhasil di-generate!`)
+                            return
                         }
-                    } catch (error) {
                     }
-                }, 2000) // Poll every 2 seconds
-            },
-            (error) => showError(error)
-        )
+
+                    pollAttempts++
+                    if (pollAttempts >= maxAttempts) {
+                        clearInterval(pollForImages)
+                        showWarning('AI generation timeout. Refresh untuk lihat hasil.')
+                    }
+                } catch (error) {
+                }
+            }, 2000) // Poll every 2 seconds
+
+        } else {
+            // Stock images: single call with polling
+            await fetchImages(
+                keywords,
+                count,
+                orientation,
+                source,
+                async (images) => {
+                    // Start polling for updated images (callback updates DB async)
+                    let pollAttempts = 0
+                    const maxAttempts = 15 // 30 seconds for stock
+
+                    const pollForImages = setInterval(async () => {
+                        try {
+                            const res = await fetch(`/api/scripts/${script.id}`, {
+                                headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+                            })
+                            const data = await res.json()
+
+                            if (data.script) {
+                                const newImageCount = (data.script.imageUrls as any[])?.length || 0
+
+                                // Check if new images appeared
+                                if (newImageCount > initialImageCount) {
+                                    clearInterval(pollForImages)
+                                    onScriptUpdated(data.script)
+                                    showSuccess(`Fetched ${newImageCount - initialImageCount} images successfully`)
+                                    return
+                                }
+                            }
+
+                            pollAttempts++
+                            if (pollAttempts >= maxAttempts) {
+                                clearInterval(pollForImages)
+                                showWarning('Images fetch timed out. Please refresh to see results.')
+                            }
+                        } catch (error) {
+                        }
+                    }, 2000) // Poll every 2 seconds
+                },
+                (error) => showError(error)
+            )
+        }
     }
 
     const handleGenerateVideoClick = async (keywords: string, count: number, orientation: string, source?: string) => {
@@ -342,7 +397,7 @@ export default function ScriptModal({
                                     onGenerateVideo={handleGenerateVideoClick}
                                     fetchingImages={fetchingImages}
                                     generatingVideo={generatingVideo}
-                                    extractedKeywords={(script as any).keywords || extractKeywords(script.script)}
+                                    extractedKeywords={script.keywords || extractKeywords(script.script)}
                                 />
                             </>
                         )}

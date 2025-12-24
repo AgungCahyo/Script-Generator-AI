@@ -5,13 +5,43 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { CheckmarkCircleOutline, ArrowBack, StarOutline } from 'react-ionicons'
 import Link from 'next/link'
+import { CREDIT_PACKAGES } from '@/lib/constants/credits'
+import CoinIcon from '@/components/icons/CoinIcon'
 
-// Credit pack options - Rp 2,500 per credit base
+// Credit pack options - derived from constants
 const CREDIT_PACKS = [
-    { credits: 10, price: 25000, originalPrice: 35000, bonusCredits: 2, label: 'Starter', popular: false },
-    { credits: 50, price: 125000, originalPrice: 160000, bonusCredits: 10, label: 'Popular', popular: true },
-    { credits: 100, price: 250000, originalPrice: 320000, bonusCredits: 20, label: 'Pro', popular: false },
-    { credits: 500, price: 1250000, originalPrice: 1600000, bonusCredits: 100, label: 'Agency', popular: false },
+    {
+        credits: CREDIT_PACKAGES.STARTER.credits,
+        price: CREDIT_PACKAGES.STARTER.priceIDR,
+        originalPrice: 35000,
+        bonusCredits: Math.floor(CREDIT_PACKAGES.STARTER.credits * 0.2),
+        label: 'Starter',
+        popular: false
+    },
+    {
+        credits: CREDIT_PACKAGES.SMALL.credits,
+        price: CREDIT_PACKAGES.SMALL.priceIDR,
+        originalPrice: 160000,
+        bonusCredits: Math.floor(CREDIT_PACKAGES.SMALL.credits * 0.2),
+        label: 'Popular',
+        popular: true
+    },
+    {
+        credits: CREDIT_PACKAGES.MEDIUM.credits,
+        price: CREDIT_PACKAGES.MEDIUM.priceIDR,
+        originalPrice: 320000,
+        bonusCredits: Math.floor(CREDIT_PACKAGES.MEDIUM.credits * 0.2),
+        label: 'Pro',
+        popular: false
+    },
+    {
+        credits: CREDIT_PACKAGES.LARGE.credits,
+        price: CREDIT_PACKAGES.LARGE.priceIDR,
+        originalPrice: 650000,
+        bonusCredits: Math.floor(CREDIT_PACKAGES.LARGE.credits * 0.2),
+        label: 'Agency',
+        popular: false
+    },
 ]
 
 export default function PricingPage() {
@@ -173,9 +203,9 @@ export default function PricingPage() {
                             </div>
 
                             <div className="mb-6">
-                                <div className="flex items-baseline gap-1 mb-2">
+                                <div className="flex items-baseline gap-2 mb-2">
                                     <span className="text-4xl font-bold text-neutral-900">{pack.credits}</span>
-                                    <span className="text-neutral-500 text-sm">credits</span>
+                                    <CoinIcon className="w-8 h-8" />
                                 </div>
                                 <div className="space-y-1">
                                     {/* Show original price with strikethrough */}
@@ -189,11 +219,11 @@ export default function PricingPage() {
                                     {(!user || !hasEverPurchased) && pack.bonusCredits && (
                                         <div className="mt-2 pt-2 border-t border-neutral-100">
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-xs font-semibold text-green-600">+{pack.bonusCredits} bonus credits</span>
+                                                <span className="text-xs font-semibold text-green-600 inline-flex items-center gap-0.5">+{pack.bonusCredits} <CoinIcon className="w-3 h-3" /> bonus</span>
                                                 <span className="text-xs text-neutral-400">(first purchase)</span>
                                             </div>
-                                            <div className="text-xs text-neutral-500 mt-0.5">
-                                                Total: <strong>{pack.credits + pack.bonusCredits} credits</strong>
+                                            <div className="text-xs text-neutral-500 mt-0.5 inline-flex items-center gap-1">
+                                                Total: <strong className="inline-flex items-center gap-0.5">{pack.credits + pack.bonusCredits} <CoinIcon className="w-3 h-3" /></strong>
                                             </div>
                                         </div>
                                     )}
@@ -203,15 +233,15 @@ export default function PricingPage() {
                             <ul className="space-y-2 mb-6 text-sm">
                                 <li className="flex items-center gap-2 text-neutral-700">
                                     <CheckmarkCircleOutline color="#22c55e" width="16px" height="16px" />
-                                    ~{Math.floor(pack.credits / 6)} script pendek
+                                    ~{Math.floor(pack.credits / 30)} script (model standar)
                                 </li>
                                 <li className="flex items-center gap-2 text-neutral-700">
                                     <CheckmarkCircleOutline color="#22c55e" width="16px" height="16px" />
-                                    ~{Math.floor(pack.credits / 3)} TTS sections
+                                    ~{Math.floor(pack.credits / 30)} TTS sections
                                 </li>
                                 <li className="flex items-center gap-2 text-neutral-700">
                                     <CheckmarkCircleOutline color="#22c55e" width="16px" height="16px" />
-                                    ~{pack.credits * 5} images atau ~{Math.floor(pack.credits / 2)} videos
+                                    ~{pack.credits * 0.5} images • ~{Math.floor(pack.credits / 20)} videos
                                 </li>
                             </ul>
 
@@ -241,15 +271,20 @@ export default function PricingPage() {
                     <div className="grid sm:grid-cols-3 gap-6 text-sm">
                         <div>
                             <div className="font-semibold text-neutral-900 mb-2">Generate Script</div>
-                            <div className="text-neutral-600">6-7 credits per script pendek (30-120 detik)</div>
+                            <div className="text-neutral-600">
+                                <div className="mb-1"><strong>Hemat:</strong> 20 credits (Flash-Lite)</div>
+                                <div className="mb-1"><strong>Standar:</strong> 30 credits (Flash)</div>
+                                <div><strong>Premium:</strong> 50 credits (Pro)</div>
+                                <div className="text-xs text-neutral-400 mt-2">+ 10 credits per menit durasi</div>
+                            </div>
                         </div>
                         <div>
                             <div className="font-semibold text-neutral-900 mb-2">Text-to-Speech</div>
-                            <div className="text-neutral-600">3 credits per section narasi</div>
+                            <div className="text-neutral-600">30 credits per section narasi</div>
                         </div>
                         <div>
                             <div className="font-semibold text-neutral-900 mb-2">Search Media</div>
-                            <div className="text-neutral-600">1 credit per 5 gambar • 2 credits per video</div>
+                            <div className="text-neutral-600">10 credits per 5 gambar • 20 credits per video</div>
                         </div>
                     </div>
                 </div>

@@ -2,6 +2,7 @@
 
 import { WalletOutline, CloseOutline, CardOutline } from 'react-ionicons'
 import Link from 'next/link'
+import CoinIcon from '@/components/icons/CoinIcon'
 
 interface InsufficientCreditsModalProps {
     isOpen: boolean
@@ -44,8 +45,8 @@ export default function InsufficientCreditsModal({
                 </h2>
 
                 {/* Message */}
-                <p className="text-neutral-600 text-center mb-6">
-                    You need <strong>{required} credits</strong> but only have <strong>{available} credits</strong> available.
+                <p className="text-neutral-600 text-center mb-6 flex items-center justify-center gap-1 flex-wrap">
+                    You need <strong className="inline-flex items-center gap-0.5">{required} <CoinIcon className="w-3 h-3" /></strong> but only have <strong className="inline-flex items-center gap-0.5">{available} <CoinIcon className="w-3 h-3" /></strong> available.
                 </p>
 
                 {/* Shortage */}

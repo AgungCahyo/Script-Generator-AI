@@ -32,6 +32,7 @@ import {
     DEFAULT_VOCABULARY
 } from '@/lib/constants/narration-options'
 import { calculateScriptCost } from '@/lib/credits'
+import CoinIcon from './icons/CoinIcon'
 
 interface ScriptFormProps {
     onSubmit: (data: ScriptFormData) => Promise<void>
@@ -61,8 +62,8 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
         e.preventDefault()
         if (!topic.trim() || loading || disabled) return
 
-        // Calculate credits
-        const credits = calculateScriptCost(parseInt(duration))
+        // Calculate credits with tiered model pricing
+        const credits = calculateScriptCost(model, parseInt(duration))
 
         // Show confirmation
         const confirmed = await confirm({
@@ -95,11 +96,11 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
 
     const isDisabled = loading || disabled
 
-    // Calculate credit cost based on duration
+    // Calculate credit cost based on model tier and duration
     const creditCost = useMemo(() => {
         const durationValue = typeof duration === 'string' ? parseInt(duration) : duration
-        return calculateScriptCost(durationValue)
-    }, [duration])
+        return calculateScriptCost(model, durationValue)
+    }, [model, duration])
 
     const inputClasses = `w-full h-10 px-3 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-500 transition-shadow ${isDisabled ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white'}`
 
@@ -130,7 +131,9 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
                         ) : (
                             <>
                                 <span>Generate</span>
-                                <span className="text-[10px] opacity-75">({creditCost} credits)</span>
+                                <span className="text-[10px] opacity-75 inline-flex items-center gap-0.5">
+                                    ({creditCost} <CoinIcon className="w-2.5 h-2.5" />)
+                                </span>
                             </>
                         )}
                     </button>

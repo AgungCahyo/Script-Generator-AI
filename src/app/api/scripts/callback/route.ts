@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { extractKeywords } from '@/lib/utils/keywords'
+import { verifyWebhookSignature, devLog } from '@/lib/utils/webhook-security'
 
 // POST: Receive callback from n8n
 export async function POST(request: NextRequest) {
     try {
-        const body = await request.json()
+        // Security: Verify webhook signature
+        const signature = request.headers.get('x-webhook-signature')
+        const rawBody = await request.text()
+
+        if (!verifyWebhookSignature(rawBody, signature)) {
+            return NextResponse.json(
+                { error: 'Invalid webhook signature' },
+                { status: 403 }
+            )
+        }
+
+        const body = JSON.parse(rawBody)
         const { scriptId, script, audioUrl, audioFiles, audioBase64, status, error } = body
 
-        if (!scriptId) {
-            return NextResponse.json({ error: 'scriptId is required' }, { status: 400 })
+        // Input validation
+        if (!scriptId || typeof scriptId !== 'string') {
+            return NextResponse.json({ error: 'Valid scriptId is required' }, { status: 400 })
         }
 
         const existingScript = await prisma.script.findUnique({
@@ -24,13 +37,25 @@ export async function POST(request: NextRequest) {
         const updateData: Record<string, unknown> = {}
 
         if (script !== undefined) {
+            // Validate script length
+            if (typeof script === 'string' && script.length > 100000) {
+                return NextResponse.json({ error: 'Script too large' }, { status: 400 })
+            }
+
             updateData.script = script
             // Extract and save keywords for media search
-            updateData.keywords = extractKeywords(script)
+            const extractedKeywords = extractKeywords(script)
+            devLog('🔍 Extracted keywords:', extractedKeywords)
+            updateData.keywords = extractedKeywords
         }
 
         // Support audioFiles array (new format) - MERGE with existing audio files
         if (audioFiles !== undefined && audioFiles !== null && Array.isArray(audioFiles)) {
+            // Validate array size
+            if (audioFiles.length > 200) {
+                return NextResponse.json({ error: 'Too many audio files' }, { status: 400 })
+            }
+
             // Get existing audioFiles from database
             const existingAudioFiles = (existingScript.audioFiles as any[]) || []
 

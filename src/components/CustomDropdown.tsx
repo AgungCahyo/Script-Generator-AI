@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDownOutline } from 'react-ionicons'
 import { DropdownOption } from '@/lib/constants/models'
+import CoinIcon from './icons/CoinIcon'
 
 interface CustomDropdownProps {
     value: string
@@ -64,14 +65,21 @@ export default function CustomDropdown({
                     : 'hover:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent'
                     } ${isOpen ? 'ring-2 ring-neutral-900 border-transparent' : ''}`}
             >
-                <span className={selectedOption ? 'text-neutral-900' : 'text-neutral-400'}>
-                    {selectedOption?.label || placeholder}
-                </span>
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <span className={`truncate ${selectedOption ? 'text-neutral-900' : 'text-neutral-400'}`}>
+                        {selectedOption?.label || placeholder}
+                    </span>
+                    {selectedOption?.badge && (
+                        <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 text-neutral-600 rounded shrink-0">
+                            {selectedOption.badge}
+                        </span>
+                    )}
+                </div>
                 <ChevronDownOutline
                     color="currentColor"
                     width="16px"
                     height="16px"
-                    cssClasses={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    cssClasses={`transition-transform shrink-0 ${isOpen ? 'rotate-180' : ''}`}
                 />
             </button>
 
@@ -87,11 +95,25 @@ export default function CustomDropdown({
                                 : 'text-neutral-700 hover:bg-neutral-50'
                                 }`}
                         >
-                            <div className="flex flex-col">
-                                <span>{option.label}</span>
-                                {option.description && (
-                                    <span className="text-xs text-neutral-500 mt-0.5">
-                                        {option.description}
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex flex-col flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="truncate">{option.label}</span>
+                                        {option.badge && (
+                                            <span className="text-[10px] px-1.5 py-0.5 bg-neutral-100 text-neutral-600 rounded shrink-0">
+                                                {option.badge}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {option.description && (
+                                        <span className="text-xs text-neutral-500 mt-0.5">
+                                            {option.description}
+                                        </span>
+                                    )}
+                                </div>
+                                {option.credits !== undefined && (
+                                    <span className="text-xs font-semibold text-neutral-900 shrink-0 inline-flex items-center gap-0.5">
+                                        {option.credits} <CoinIcon className="w-3 h-3" />
                                     </span>
                                 )}
                             </div>
