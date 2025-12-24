@@ -35,15 +35,18 @@ function getAuthErrorMessage(error: unknown): string {
 interface LoginModalProps {
     isOpen: boolean
     onClose: () => void
+    onLoadingChange?: (isLoading: boolean) => void
 }
 
-export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
+export default function LoginModal({ isOpen, onClose, onLoadingChange }: LoginModalProps) {
     const { signInWithGoogle, signInWithEmail, signUpWithEmail, user } = useAuth()
     const [isSignUp, setIsSignUp] = useState(false)
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
+    const [isClosing, setIsClosing] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
 
     // Close modal when user logs in successfully
     useEffect(() => {
@@ -52,6 +55,16 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         }
     }, [user, isOpen, onClose])
 
+    // Mount animation
+    useEffect(() => {
+        if (isOpen) {
+            // Small delay to let browser render initial state before animating
+            setTimeout(() => setIsMounted(true), 10)
+        } else {
+            setIsMounted(false)
+        }
+    }, [isOpen])
+
     // Reset form when modal opens/closes
     useEffect(() => {
         if (!isOpen) {
@@ -59,12 +72,21 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             setPassword('')
             setError('')
             setIsSignUp(false)
+            setIsClosing(false)
         }
     }, [isOpen])
+
+    const handleClose = () => {
+        setIsClosing(true)
+        setTimeout(() => {
+            onClose()
+        }, 200) // Match animation duration
+    }
 
     const handleEmailAuth = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
+        onLoadingChange?.(true)
         setError('')
 
         try {
@@ -73,41 +95,44 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             } else {
                 await signInWithEmail(email, password)
             }
+            // Loading will be cleared by unmont or success redirect handling
         } catch (err: unknown) {
             setError(getAuthErrorMessage(err))
-        } finally {
             setLoading(false)
+            onLoadingChange?.(false)
         }
     }
 
     const handleGoogleAuth = async () => {
         setLoading(true)
+        onLoadingChange?.(true)
         setError('')
 
         try {
             await signInWithGoogle()
+            // Loading will be cleared by unmont or success redirect handling
         } catch (err: unknown) {
             setError(getAuthErrorMessage(err))
-        } finally {
             setLoading(false)
+            onLoadingChange?.(false)
         }
     }
 
-    if (!isOpen) return null
+    if (!isOpen && !isMounted) return null
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                onClick={onClose}
+                className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isClosing ? 'opacity-0' : (isMounted ? 'opacity-100' : 'opacity-0')}`}
+                onClick={handleClose}
             />
 
             {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className={`relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6 transition-all duration-200 ${isClosing ? 'scale-95 opacity-0' : (isMounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0')}`}>
                 {/* Close button */}
                 <button
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="absolute top-4 right-4 p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
                 >
                     <CloseOutline color="currentColor" width="20px" height="20px" />

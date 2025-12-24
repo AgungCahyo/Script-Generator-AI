@@ -44,23 +44,33 @@ export default function ScriptModal({
     const { displayedScript, skipTyping, isTyping, scriptContentRef } = useScriptTyping(script, authToken, onScriptUpdated)
     const { isMounted, copied, copyToClipboard, isEditingTitle, editedTitle, handleEditTitle, handleCancelEditTitle, setEditedTitle } = useScriptModal(isOpen)
     const { savingTitle, handleSaveTitle: saveTitle, saving, handleSave: saveScript, fetchingImages, handleFetchImages: fetchImages, generatingVideo, handleGenerateVideo: generateVideo, handleDeleteMedia: deleteMedia } = useScriptActions(script, authToken)
+    const [isClosing, setIsClosing] = useState(false)
 
     // Close on Escape key
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
-                onClose()
+                handleClose()
             }
         }
         if (isOpen) {
             document.addEventListener('keydown', handleEscape)
             document.body.style.overflow = 'hidden'
+        } else {
+            setIsClosing(false)
         }
         return () => {
             document.removeEventListener('keydown', handleEscape)
             document.body.style.overflow = 'unset'
         }
     }, [isOpen, onClose])
+
+    const handleClose = () => {
+        setIsClosing(true)
+        setTimeout(() => {
+            onClose()
+        }, 300)
+    }
 
     if (!isOpen || !script) return null
 
@@ -304,14 +314,12 @@ export default function ScriptModal({
             }`}>
             {/* Backdrop */}
             <div
-                className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isOpen && isMounted ? 'opacity-100' : 'opacity-0'
-                    }`}
-                onClick={onClose}
+                className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isClosing ? 'opacity-0' : (isOpen && isMounted ? 'opacity-100' : 'opacity-0')}`}
+                onClick={handleClose}
             />
 
             {/* Modal with popup animation */}
-            <div className={`relative w-full h-full sm:max-w-5xl sm:max-h-[90vh] sm:m-4 bg-neutral-100 sm:rounded-lg shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-out ${isOpen && isMounted ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
-                }`}>
+            <div className={`relative w-full h-full sm:max-w-5xl sm:max-h-[90vh] sm:m-4 bg-neutral-100 sm:rounded-lg shadow-xl flex flex-col overflow-hidden transition-all duration-300 ease-out ${isClosing ? 'scale-95 opacity-0' : (isOpen && isMounted ? 'scale-100 opacity-100' : 'scale-90 opacity-0')}`}>
                 {/* Header Bar */}
                 <div className="flex items-center justify-between px-2 sm:px-4 py-2 bg-white border-b border-neutral-200">
                     <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
@@ -405,7 +413,7 @@ export default function ScriptModal({
 
                         <div className="w-px h-4 bg-neutral-200 mx-2" />
                         <button
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="p-1.5 text-neutral-500 hover:bg-neutral-100 rounded transition-colors"
                         >
                             <CloseOutline color="currentColor" width="20px" height="20px" />

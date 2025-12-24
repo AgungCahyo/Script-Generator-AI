@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { WalletOutline, CardOutline, TimeOutline, ArrowBack, TrendingUpOutline, TrendingDownOutline } from 'react-ionicons'
 import Link from 'next/link'
 import CoinIcon from '@/components/icons/CoinIcon'
+import LoadingScreen from '@/components/LoadingScreen'
 
 interface Transaction {
     id: string
@@ -105,11 +106,7 @@ export default function BillingDashboardPage() {
     }
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-                <div className="text-neutral-400">Loading...</div>
-            </div>
-        )
+        return <LoadingScreen message="Loading billing data..." />
     }
 
     return (

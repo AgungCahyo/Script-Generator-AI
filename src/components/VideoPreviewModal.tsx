@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import { CloseOutline, DownloadOutline, SyncOutline } from 'react-ionicons'
 
 interface VideoPreviewModalProps {
@@ -17,7 +18,7 @@ export function VideoPreviewModal({
     onDownload,
     isDownloading = false
 }: VideoPreviewModalProps) {
-    return (
+    return typeof document !== 'undefined' ? createPortal(
         <div
             className="fixed inset-0 z-200 bg-black/90 flex items-center justify-center p-2 sm:p-4"
             onClick={onClose}
@@ -76,6 +77,7 @@ export function VideoPreviewModal({
                     )}
                 </div>
             </div>
-        </div>
-    )
+        </div>,
+        document.body
+    ) : null
 }

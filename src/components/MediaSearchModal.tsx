@@ -51,6 +51,7 @@ export default function MediaSearchModal({
     const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape')
     const [source, setSource] = useState('pexels')
     const [isMounted, setIsMounted] = useState(false)
+    const [isClosing, setIsClosing] = useState(false)
 
     // Parse extracted keywords into array
     const suggestedKeywords = extractedKeywords
@@ -62,14 +63,15 @@ export default function MediaSearchModal({
     // Mount animation and initialize selected keywords
     useEffect(() => {
         if (isOpen) {
-            setIsMounted(true)
+            // Small delay to let browser render initial state
+            setTimeout(() => setIsMounted(true), 10)
             // Auto-select first 3 suggested keywords
             if (suggestedKeywords.length > 0) {
                 setSelectedKeywords(suggestedKeywords.slice(0, 3))
             }
             setInputValue('')
         } else {
-            setTimeout(() => setIsMounted(false), 300) // Wait for animation
+            setIsMounted(false)
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isOpen])
@@ -78,7 +80,7 @@ export default function MediaSearchModal({
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
             if (e.key === 'Escape') {
-                onClose()
+                handleClose()
             }
         }
         if (isOpen) {
@@ -86,6 +88,14 @@ export default function MediaSearchModal({
             return () => document.removeEventListener('keydown', handleEscape)
         }
     }, [isOpen, onClose])
+
+    const handleClose = () => {
+        setIsClosing(true)
+        setTimeout(() => {
+            onClose()
+            setIsClosing(false)
+        }, 300)
+    }
 
     const handleSubmit = async () => {
         // Combine selected keywords + typed input
@@ -158,14 +168,13 @@ export default function MediaSearchModal({
             >
                 {/* Backdrop */}
                 <div
-                    className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                    onClick={onClose}
+                    className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ${isClosing ? 'opacity-0' : 'opacity-100'}`}
+                    onClick={handleClose}
                 />
 
                 {/* Modal */}
                 <div
-                    className={`relative w-full max-w-md max-h-[90vh] mx-4 bg-white rounded-xl shadow-2xl transition-all duration-300 ease-out flex flex-col ${isOpen && isMounted ? 'scale-100 opacity-100' : 'scale-90 opacity-0'
-                        }`}
+                    className={`relative w-full max-w-md max-h-[90vh] mx-4 bg-white rounded-xl shadow-2xl transition-all duration-300 ease-out flex flex-col ${isClosing ? 'scale-95 opacity-0' : (isOpen && isMounted ? 'scale-100 opacity-100' : 'scale-90 opacity-0')}`}
                 >
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-200 shrink-0">
@@ -173,7 +182,7 @@ export default function MediaSearchModal({
                             {type === 'image' ? 'Cari Gambar' : 'Cari Video'}
                         </h2>
                         <button
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
                             aria-label="Close"
                         >
@@ -352,7 +361,7 @@ export default function MediaSearchModal({
                     {/* Footer - Fixed at bottom */}
                     <div className="px-6 py-4 bg-neutral-50 border-t border-neutral-200 flex gap-3 rounded-b-xl shrink-0">
                         <button
-                            onClick={onClose}
+                            onClick={handleClose}
                             disabled={isLoading}
                             className="flex-1 px-4 py-2.5 text-sm font-medium text-neutral-700 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >

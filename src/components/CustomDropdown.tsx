@@ -23,6 +23,7 @@ export default function CustomDropdown({
     label
 }: CustomDropdownProps) {
     const [isOpen, setIsOpen] = useState(false)
+    const [isMounted, setIsMounted] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
     const selectedOption = options.find(opt => opt.value === value)
@@ -40,6 +41,15 @@ export default function CustomDropdown({
 
         return () => {
             document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [isOpen])
+
+    // Mount animation for dropdown
+    useEffect(() => {
+        if (isOpen) {
+            setTimeout(() => setIsMounted(true), 10)
+        } else {
+            setIsMounted(false)
         }
     }, [isOpen])
 
@@ -84,7 +94,7 @@ export default function CustomDropdown({
             </button>
 
             {isOpen && !disabled && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className={`absolute z-50 w-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg max-h-60 overflow-y-auto transition-all duration-200 origin-top ${isMounted ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
                     {options.map((option) => (
                         <button
                             key={option.value}

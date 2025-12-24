@@ -1,5 +1,6 @@
 'use client'
 
+import { createPortal } from 'react-dom'
 import { CameraOutline, CloseOutline, DownloadOutline, SyncOutline } from 'react-ionicons'
 
 interface ImagePreviewModalProps {
@@ -19,7 +20,7 @@ export function ImagePreviewModal({
     onDownload,
     isDownloading = false
 }: ImagePreviewModalProps) {
-    return (
+    return typeof document !== 'undefined' ? createPortal(
         <div
             className="fixed inset-0 z-200 bg-black/90 flex items-center justify-center p-2 sm:p-4"
             onClick={onClose}
@@ -78,6 +79,7 @@ export function ImagePreviewModal({
                     )}
                 </div>
             </div>
-        </div>
-    )
+        </div>,
+        document.body
+    ) : null
 }

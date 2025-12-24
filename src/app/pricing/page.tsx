@@ -7,6 +7,7 @@ import { CheckmarkCircleOutline, ArrowBack, StarOutline } from 'react-ionicons'
 import Link from 'next/link'
 import { CREDIT_PACKAGES } from '@/lib/constants/credits'
 import CoinIcon from '@/components/icons/CoinIcon'
+import LoadingScreen from '@/components/LoadingScreen'
 
 // Credit pack options - derived from constants
 const CREDIT_PACKS = [
@@ -51,15 +52,28 @@ export default function PricingPage() {
     const [credits, setCredits] = useState(0)
     const [hasEverPurchased, setHasEverPurchased] = useState(false)
     const [checkingHistory, setCheckingHistory] = useState(true)
+    const [initialLoading, setInitialLoading] = useState(true)
 
     useEffect(() => {
         if (user) {
-            fetchCreditBalance()
-            checkPurchaseHistory()
+            loadInitialData()
         } else {
             setCheckingHistory(false)
+            setInitialLoading(false)
         }
     }, [user])
+
+    const loadInitialData = async () => {
+        try {
+            // Wait for both fetches to complete
+            await Promise.all([
+                fetchCreditBalance(),
+                checkPurchaseHistory()
+            ])
+        } finally {
+            setInitialLoading(false)
+        }
+    }
 
     const fetchCreditBalance = async () => {
         if (!user) return
@@ -137,6 +151,11 @@ export default function PricingPage() {
         return `Rp ${amount.toLocaleString('id-ID')}`
     }
 
+    // Show loading screen while checking initial data
+    if (initialLoading && user) {
+        return <LoadingScreen message="Loading pricing data..." />
+    }
+
     return (
         <div className="min-h-screen bg-neutral-50">
             {/* Header */}
@@ -154,8 +173,11 @@ export default function PricingPage() {
                             <h1 className="text-lg font-semibold text-neutral-900">Pricing</h1>
                         </div>
                         {user && (
-                            <div className="text-sm text-neutral-600">
-                                Saldo: <span className="font-semibold text-neutral-900">{credits} credits</span>
+                            <div className="text-sm text-neutral-600 flex items-center gap-1.5">
+                                Saldo:
+                                <span className="font-semibold text-neutral-900 flex items-center gap-1">
+                                    {credits} <CoinIcon className="w-4 h-4" />
+                                </span>
                             </div>
                         )}
                     </div>

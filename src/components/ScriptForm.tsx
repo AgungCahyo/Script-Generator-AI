@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Reload, ChevronDownOutline, ChevronUpOutline, Mic } from 'react-ionicons'
 import CustomDropdown from './CustomDropdown'
 import { useConfirm } from './Confirm'
@@ -38,9 +38,10 @@ interface ScriptFormProps {
     onSubmit: (data: ScriptFormData) => Promise<void>
     loading: boolean
     disabled?: boolean
+    autoExpand?: boolean
 }
 
-export default function ScriptForm({ onSubmit, loading, disabled = false }: ScriptFormProps) {
+export default function ScriptForm({ onSubmit, loading, disabled = false, autoExpand = false }: ScriptFormProps) {
     const { confirm } = useConfirm()
     const [topic, setTopic] = useState('')
     const [model, setModel] = useState(DEFAULT_MODEL)
@@ -57,6 +58,13 @@ export default function ScriptForm({ onSubmit, loading, disabled = false }: Scri
     const [voiceTone, setVoiceTone] = useState(DEFAULT_VOICE_TONE)
     const [pacing, setPacing] = useState(DEFAULT_PACING)
     const [vocabularyLevel, setVocabularyLevel] = useState(DEFAULT_VOCABULARY)
+
+    // Auto-expand options if requested (e.g. for new users)
+    useEffect(() => {
+        if (autoExpand) {
+            setShowOptions(true)
+        }
+    }, [autoExpand])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
