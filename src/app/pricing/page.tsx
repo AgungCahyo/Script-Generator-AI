@@ -134,6 +134,10 @@ export default function PricingPage() {
 
             const data = await response.json()
             if (data.paymentUrl) {
+                // Store payment URL in localStorage for later retrieval
+                if (data.orderId) {
+                    localStorage.setItem(`payment_${data.orderId}`, data.paymentUrl)
+                }
                 window.location.href = data.paymentUrl
             } else {
                 alert('Failed to create checkout')

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { TimeOutline } from 'react-ionicons'
 import Link from 'next/link'
@@ -8,6 +8,21 @@ import Link from 'next/link'
 function PaymentPendingContent() {
     const searchParams = useSearchParams()
     const orderId = searchParams.get('order_id')
+    const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
+
+    // Retrieve payment URL from localStorage
+    useEffect(() => {
+        if (orderId) {
+            const storedUrl = localStorage.getItem(`payment_${orderId}`)
+            setPaymentUrl(storedUrl)
+        }
+    }, [orderId])
+
+    const handleContinuePayment = () => {
+        if (paymentUrl) {
+            window.location.href = paymentUrl
+        }
+    }
 
     return (
         <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
@@ -50,6 +65,14 @@ function PaymentPendingContent() {
 
                 {/* Actions */}
                 <div className="flex gap-4">
+                    {paymentUrl && (
+                        <button
+                            onClick={handleContinuePayment}
+                            className="w-full px-4 py-2.5 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 transition-colors text-center"
+                        >
+                            Lanjutkan Pembayaran
+                        </button>
+                    )}
                     <Link
                         href="/dashboard/billing"
                         className="w-full px-4 py-2.5 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition-colors text-center"
