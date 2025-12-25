@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { VolumeHighOutline, Reload, CreateOutline, SaveOutline, CloseCircleOutline } from 'react-ionicons'
+import { VolumeHighOutline, Reload, CreateOutline } from 'react-ionicons'
 import AudioPlayer from '../../AudioPlayer'
+import ScriptEditorModal from '../../ScriptEditorModal'
 import { ScriptSection } from '../utils/scriptParser'
 import { useToast } from '../../Toast'
 import { useConfirm } from '../../Confirm'
@@ -30,22 +31,19 @@ export default function ScriptSectionCard({
     onScriptUpdated
 }: ScriptSectionCardProps) {
     const [generatingAudio, setGeneratingAudio] = useState(false)
-    const [isEditing, setIsEditing] = useState(false)
-    const [editedVisual, setEditedVisual] = useState(section.visual)
-    const [editedNarasi, setEditedNarasi] = useState(section.narasi)
-    const [saving, setSaving] = useState(false)
+    const [isEditorOpen, setIsEditorOpen] = useState(false)
     const [audioUrl, setAudioUrl] = useState<string | null>(existingAudio?.audioUrl || null)
     const { showError, showSuccess } = useToast()
     const { confirm } = useConfirm()
 
-    const handleGenerateTTS = async () => {
+    const handleGenerateTTS = async (narasiText?: string) => {
         if (!authToken) {
             showError('Login dulu yuk buat generate audio')
             return
         }
 
-        // Use editedNarasi as source of truth (it reflects current state)
-        const currentNarasi = editedNarasi || section.narasi
+        // Use provided text or current section narasi
+        const currentNarasi = narasiText || section.narasi
 
         if (!currentNarasi || currentNarasi.trim().length === 0) {
             showError('Teksnya masih kosong nih')
@@ -131,19 +129,7 @@ export default function ScriptSectionCard({
         }
     }
 
-    const handleEdit = () => {
-        setIsEditing(true)
-        setEditedVisual(section.visual)
-        setEditedNarasi(section.narasi)
-    }
-
-    const handleCancelEdit = () => {
-        setIsEditing(false)
-        setEditedVisual(section.visual)
-        setEditedNarasi(section.narasi)
-    }
-
-    const handleSave = async () => {
+    const handleEditorSave = async (visual: string, narasi: string) => {
         if (!authToken) {
             showError('Login dulu ya buat edit')
             return
@@ -164,36 +150,32 @@ export default function ScriptSectionCard({
             if (!confirmed) return
         }
 
-        setSaving(true)
         try {
             // Call parent callback to update the section
             const updatedSection: ScriptSection = {
                 ...section,
-                visual: editedVisual,
-                narasi: editedNarasi
+                visual,
+                narasi
             }
 
             if (onSectionUpdated) {
                 onSectionUpdated(updatedSection)
             }
 
-            setIsEditing(false)
             showSuccess('Section updated successfully')
 
             // If audio existed, trigger TTS regeneration
-            if (hasAudio && editedNarasi.trim()) {
+            if (hasAudio && narasi.trim()) {
                 // Clear current audio to show regeneration is needed
                 setAudioUrl(null)
 
-                // Trigger TTS generation automatically
+                // Trigger TTS generation automatically with new narasi
                 setTimeout(() => {
-                    handleGenerateTTS()
+                    handleGenerateTTS(narasi)
                 }, 500) // Small delay to ensure save is processed first
             }
         } catch (error) {
             showError('Failed to save section')
-        } finally {
-            setSaving(false)
         }
     }
 
@@ -253,111 +235,61 @@ export default function ScriptSectionCard({
     }
 
     return (
-        <div className="border border-neutral-200 rounded-lg overflow-hidden hover:border-neutral-300 transition-colors bg-white">
-            {/* Header with timestamp and edit button */}
-            <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
-                <span className="text-sm font-mono font-semibold text-neutral-900">
-                    {section.timestamp}
-                </span>
+        <>
+            {/* Script Editor Modal */}
+            <ScriptEditorModal
+                isOpen={isEditorOpen}
+                onClose={() => setIsEditorOpen(false)}
+                onSave={handleEditorSave}
+                initialVisual={section.visual}
+                initialNarasi={section.narasi}
+                timestamp={section.timestamp}
+            />
 
-                {!isEditing ? (
+            <div className="border border-neutral-200 rounded-lg overflow-hidden hover:border-neutral-300 transition-colors bg-white">
+                {/* Header with timestamp and edit button */}
+                <div className="px-4 py-2 bg-neutral-50 border-b border-neutral-200 flex items-center justify-between">
+                    <span className="text-sm font-mono font-semibold text-neutral-900">
+                        {section.timestamp}
+                    </span>
+
                     <button
-                        onClick={handleEdit}
+                        onClick={() => setIsEditorOpen(true)}
                         className="flex items-center gap-1 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
                         title="Edit this section"
                     >
                         <CreateOutline color="currentColor" width="14px" height="14px" />
                         <span>Edit</span>
                     </button>
-                ) : (
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={handleCancelEdit}
-                            className="flex items-center gap-1 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
-                        >
-                            <CloseCircleOutline color="currentColor" width="14px" height="14px" />
-                            <span>Cancel</span>
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="flex items-center gap-1 px-2 py-1 text-xs bg-neutral-900 text-white hover:bg-neutral-800 rounded disabled:opacity-50 transition-colors"
-                        >
-                            {saving ? (
-                                <>
-                                    <Reload color="currentColor" width="14px" height="14px" cssClasses="animate-spin" />
-                                    <span>Saving...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <SaveOutline color="currentColor" width="14px" height="14px" />
-                                    <span>Save</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                )}
-            </div>
+                </div>
 
-            {/* Content */}
-            <div className="p-4 space-y-3">
-                {/* Visual description */}
-                <div>
-                    <p className="text-xs font-medium text-neutral-500 mb-1">VISUAL:</p>
-                    {isEditing ? (
-                        <textarea
-                            value={editedVisual}
-                            onChange={(e) => setEditedVisual(e.target.value)}
-                            className="w-full text-sm text-neutral-700 leading-relaxed p-2 border border-neutral-200 rounded focus:outline-none focus:border-neutral-400 resize-none"
-                            rows={2}
-                            placeholder="Visual description..."
-                        />
-                    ) : (
+                {/* Content */}
+                <div className="p-4 space-y-3">
+                    {/* Visual description */}
+                    <div>
+                        <p className="text-xs font-medium text-neutral-500 mb-1">VISUAL:</p>
                         <p className="text-sm text-neutral-700 leading-relaxed">
                             {section.visual || '-'}
                         </p>
-                    )}
-                </div>
+                    </div>
 
-                {/* Narasi text */}
-                <div>
-                    <p className="text-xs font-medium text-neutral-500 mb-1">NARASI:</p>
-                    {isEditing ? (
-                        <div>
-                            <textarea
-                                value={editedNarasi}
-                                onChange={(e) => {
-                                    const value = e.target.value
-                                    if (value.length <= 1000) {
-                                        setEditedNarasi(value)
-                                    }
-                                }}
-                                className="w-full text-sm text-neutral-700 leading-relaxed p-2 border border-neutral-200 rounded focus:outline-none focus:border-neutral-400 resize-none"
-                                rows={3}
-                                placeholder="Narration text..."
-                                maxLength={1000}
-                            />
-                            <div className={`text-xs mt-1 text-right ${editedNarasi.length >= 1000 ? 'text-red-500 font-medium' : editedNarasi.length >= 900 ? 'text-yellow-600' : 'text-neutral-400'}`}>
-                                {editedNarasi.length}/1000 karakter
-                            </div>
-                        </div>
-                    ) : (
+                    {/* Narasi text */}
+                    <div>
+                        <p className="text-xs font-medium text-neutral-500 mb-1">NARASI:</p>
                         <p className="text-sm text-neutral-700 leading-relaxed">
                             {section.narasi || '-'}
                         </p>
-                    )}
-                </div>
+                    </div>
 
-                {/* Audio section - hidden during edit */}
-                {!isEditing && (
-                    audioUrl ? (
+                    {/* Audio section */}
+                    {audioUrl ? (
                         <div className="pt-2">
                             <AudioPlayer src={audioUrl} existingAudio={existingAudio || undefined} onDelete={handleDeleteAudio} />
                         </div>
                     ) : (
                         <div className="pt-2">
                             <button
-                                onClick={handleGenerateTTS}
+                                onClick={() => handleGenerateTTS()}
                                 disabled={generatingAudio || !authToken}
                                 className="w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium border border-neutral-200 rounded-lg hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
@@ -377,9 +309,9 @@ export default function ScriptSectionCard({
                                 )}
                             </button>
                         </div>
-                    )
-                )}
+                    )}
+                </div>
             </div>
-        </div>
+        </>
     )
 }

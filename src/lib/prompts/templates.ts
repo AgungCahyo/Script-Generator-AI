@@ -3,11 +3,11 @@
  */
 
 export const durationMap: Record<string, string> = {
-    '30s': '30 detik (sekitar 80-100 kata)',
-    '1m': '1 menit (sekitar 150-180 kata)',
-    '3m': '3 menit (sekitar 450-500 kata)',
-    '5m': '5 menit (sekitar 750-850 kata)',
-    '10m': '10 menit (sekitar 1500 kata)'
+    '30s': '30 detik - WAJIB 80-100 kata (target: 90 kata)',
+    '1m': '1 menit - WAJIB 150-180 kata (target: 165 kata)',
+    '3m': '3 menit - WAJIB 450-500 kata (target: 475 kata)',
+    '5m': '5 menit - WAJIB 750-850 kata (target: 800 kata)',
+    '10m': '10 menit - WAJIB 1500-1600 kata (target: 1550 kata)'
 }
 
 export const platformInstructions: Record<string, string> = {
@@ -77,6 +77,13 @@ export const vocabularyInstructions: Record<string, string> = {
 export const SCRIPT_FORMAT_TEMPLATE = `
 ATURAN FORMAT OUTPUT:
 
+⚠️ ATURAN DURASI (WAJIB - PRIORITAS TERTINGGI):
+   - TOTAL JUMLAH KATA dalam seluruh NARASI HARUS sesuai range yang ditentukan
+   - Hitung kata di semua section NARASI, pastikan total masuk range
+   - CONTOH: Durasi 30s = HARUS 80-100 kata total. Jika kurang/lebih TIDAK DITERIMA
+   - Target kata adalah MANDATORY, bukan saran!
+   - Jika mendekati batas atas, STOP. Jangan tambah section baru.
+
 1. Gunakan format berikut untuk SETIAP bagian:
    [WAKTU] contoh: [00:00]
    VISUAL: (deskripsi singkat apa yang tampil di layar)
@@ -92,7 +99,7 @@ ATURAN FORMAT OUTPUT:
    - LANGSUNG tulis naskah, tanpa pembuka/penutup tambahan
    - Setiap section HARUS punya [WAKTU], VISUAL:, dan NARASI:
    - NARASI tidak boleh ada label speaker, langsung teksnya
-   - Sesuaikan panjang naskah dengan durasi yang diminta
+   - ⚠️ CRITICAL: Sesuaikan jumlah section agar TOTAL KATA masuk range durasi!
    - ⚠️ **SANGAT PENTING**: Di akhir script setelah tanda "---", WAJIB sertakan section IMAGE KEYWORDS dalam format:
      ---
      IMAGE KEYWORDS:

@@ -32,6 +32,7 @@ import {
     DEFAULT_VOCABULARY
 } from '@/lib/constants/narration-options'
 import { calculateScriptCost } from '@/lib/credits'
+import { parseDurationToMinutes } from '@/lib/utils/duration'
 import CoinIcon from './icons/CoinIcon'
 
 interface ScriptFormProps {
@@ -71,7 +72,7 @@ export default function ScriptForm({ onSubmit, loading, disabled = false, autoEx
         if (!topic.trim() || loading || disabled) return
 
         // Calculate credits with tiered model pricing
-        const credits = calculateScriptCost(model, parseInt(duration))
+        const credits = calculateScriptCost(model, parseDurationToMinutes(duration))
 
         // Show confirmation
         const confirmed = await confirm({
@@ -106,8 +107,7 @@ export default function ScriptForm({ onSubmit, loading, disabled = false, autoEx
 
     // Calculate credit cost based on model tier and duration
     const creditCost = useMemo(() => {
-        const durationValue = typeof duration === 'string' ? parseInt(duration) : duration
-        return calculateScriptCost(model, durationValue)
+        return calculateScriptCost(model, parseDurationToMinutes(duration))
     }, [model, duration])
 
     const inputClasses = `w-full h-10 px-3 text-sm border border-neutral-200 rounded-lg text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-500 transition-shadow ${isDisabled ? 'bg-neutral-50 cursor-not-allowed' : 'bg-white'}`
@@ -179,7 +179,15 @@ export default function ScriptForm({ onSubmit, loading, disabled = false, autoEx
                             label="Durasi"
                             value={duration}
                             onChange={setDuration}
-                            options={DURATION_OPTIONS}
+                            options={DURATION_OPTIONS.map(opt => {
+                                const totalCost = calculateScriptCost(model, parseDurationToMinutes(opt.value))
+                                const baseCost = MODEL_OPTIONS.find(m => m.value === model)?.credits || 30
+                                const additionalCost = totalCost - baseCost
+                                return {
+                                    ...opt,
+                                    credits: additionalCost
+                                }
+                            })}
                             disabled={isDisabled}
                         />
                     </div>

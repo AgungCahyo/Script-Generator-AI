@@ -21,6 +21,7 @@ import {
 import { ERROR_MESSAGES } from '@/lib/constants/error-messages'
 import { parseGeminiError, parseDatabaseError } from '@/lib/utils/errors'
 import { calculateScriptCost, checkCredits, deductCredits, getUserCredits, InsufficientCreditsError } from '@/lib/credits'
+import { parseDurationToMinutes } from '@/lib/utils/duration'
 import { checkRateLimit } from '@/lib/middleware/rate-limit'
 import { RATE_LIMITS } from '@/lib/constants/rate-limits'
 
@@ -91,8 +92,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Calculate credit cost based on model tier and duration
-        // Handle duration as string (e.g., "3m") or number
-        const durationValue = typeof duration === 'string' ? parseInt(duration) : duration
+        // Parse duration correctly (e.g., "30s" -> 0.5, "3m" -> 3)
+        const durationValue = parseDurationToMinutes(duration)
         const creditCost = calculateScriptCost(selectedModel, durationValue)
 
         // Check if user has enough credits

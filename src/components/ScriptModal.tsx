@@ -570,8 +570,8 @@ export default function ScriptModal({
                                         </div>
                                     )}
 
-                                    {/* Skip Typing Button - shown whenever typing is active */}
-                                    {isTyping && displayedScript && (
+                                    {/* Skip Typing Button - shown only while actively typing */}
+                                    {isTyping && displayedScript && script?.script && displayedScript.length < script.script.length && (
                                         <div className="mt-4 flex justify-center">
                                             <button
                                                 onClick={skipTyping}

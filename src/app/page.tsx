@@ -705,7 +705,7 @@ export default function Home() {
 
         {/* Login Loading Overlay */}
         {loginLoading && (
-          <div className="fixed inset-0 z-[60] bg-white">
+          <div className="fixed inset-0 z-60 bg-white">
             <LoadingScreen message="Signing in..." />
           </div>
         )}
