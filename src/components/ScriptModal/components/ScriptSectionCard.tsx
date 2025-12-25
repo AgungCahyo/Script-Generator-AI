@@ -87,7 +87,7 @@ export default function ScriptSectionCard({
             const data = await res.json()
 
             if (!res.ok || !data.success) {
-                showError(data.message || data.error || 'Failed to generate audio')
+                showError(data.message || data.error || 'Gagal generate audio')
                 setGeneratingAudio(false)
                 return
             }
@@ -108,7 +108,7 @@ export default function ScriptSectionCard({
                     clearInterval(pollInterval)
                     setAudioUrl(matchingAudio.audioUrl)
                     setGeneratingAudio(false)
-                    showSuccess('Audio generated successfully')
+                    showSuccess('Audio berhasil di-generate')
 
                     // Update parent script to trigger re-render with new audio
                     if (onScriptUpdated && scriptData.script) {
@@ -124,7 +124,7 @@ export default function ScriptSectionCard({
             }, 120000)
 
         } catch (error) {
-            showError('Network error. Please check your connection')
+            showError('Error jaringan. Cek koneksi internet kamu')
             setGeneratingAudio(false)
         }
     }
@@ -162,7 +162,7 @@ export default function ScriptSectionCard({
                 onSectionUpdated(updatedSection)
             }
 
-            showSuccess('Section updated successfully')
+            showSuccess('Section berhasil diupdate')
 
             // If audio existed, trigger TTS regeneration
             if (hasAudio && narasi.trim()) {
@@ -175,7 +175,7 @@ export default function ScriptSectionCard({
                 }, 500) // Small delay to ensure save is processed first
             }
         } catch (error) {
-            showError('Failed to save section')
+            showError('Gagal menyimpan section')
         }
     }
 
@@ -211,7 +211,7 @@ export default function ScriptSectionCard({
             const data = await res.json()
 
             if (!res.ok || !data.success) {
-                showError(data.message || data.error || 'Failed to delete audio')
+                showError(data.message || data.error || 'Gagal menghapus audio')
                 return
             }
 
@@ -228,7 +228,7 @@ export default function ScriptSectionCard({
                 onScriptUpdated(scriptData.script)
             }
 
-            showSuccess('Audio deleted successfully')
+            showSuccess('Audio berhasil dihapus')
         } catch (error) {
             showError('Network error. Please check your connection')
         }

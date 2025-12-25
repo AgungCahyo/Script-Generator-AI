@@ -18,7 +18,7 @@ export default function ReviewWarning({ show }: ReviewWarningProps) {
             <AlertCircleOutline color="#d97706" width="18px" height="18px" cssClasses="mt-0.5 shrink-0" />
             <div className="flex-1">
                 <p className="text-xs text-amber-800">
-                    <strong>Review First:</strong> Please check your script carefully before generating audio to ensure there are no formatting issues like <code className="bg-amber-100 px-1 rounded text-[10px]">[Chapter: ...]</code> markers.
+                    <strong>Cek dulu:</strong> Review script kamu sebelum generate audio, pastikan ga ada formatting issue kayak marker <code className="bg-amber-100 px-1 rounded text-[10px]">[Chapter: ...]</code>.
                 </p>
             </div>
         </div>
